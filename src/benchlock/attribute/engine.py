@@ -365,7 +365,7 @@ def _corrected_stream(
         )
     }
     shared = sorted(set(system_devs) & set(anchor_devs))
-    if not shared:
+    if len(shared) < 2:
         return empty
 
     paired = [system_devs[i] - anchor_devs[i] for i in shared]
@@ -373,8 +373,12 @@ def _corrected_stream(
     scale = MonitorScale.for_target(config.target_shift, baseline_sd)
     # The corrected stream's null is centred on zero by construction: under "the judge
     # explains the whole move", the two deviations are equal and their difference is zero.
-    # Its uncertainty is that of the two baselines it was built from.
-    null = frozen_baseline_null(baseline_sd, len(shared), alpha, scale=scale)
+    # Its uncertainty is that of the two *baselines* it was built from — the anchor's K
+    # replicates and the system's baseline runs — not the number of runs monitored since.
+    # Using the monitored count would make the null tighten simply because time passed,
+    # which is not a thing that happens.
+    effective_k = max(2, min(replicates, config.baseline_runs))
+    null = frozen_baseline_null(baseline_sd, effective_k, alpha, scale=scale)
     return _monitor_stream(
         paired,
         null,

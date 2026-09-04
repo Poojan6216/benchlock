@@ -41,6 +41,7 @@ class RecordType(StrEnum):
     RUN = "run"  # one CI run of one stream
     BASELINE = "baseline"  # the anchor set was frozen and the noise floor measured
     REBASELINE = "rebaseline"  # an explicit, reasoned epoch boundary (Hard Rule 8)
+    VERDICT = "verdict"  # a verdict as it was issued, so `replay` has something to check
 
 
 class LedgerError(Exception):
@@ -357,6 +358,37 @@ class Ledger:
         )
 
     # ---- reconstruction ---------------------------------------------------------------
+
+    def append_verdict(
+        self,
+        attribution: Mapping[str, Any],
+        *,
+        at_system_run: int,
+        at_anchor_run: int,
+    ) -> LedgerRecord:
+        """Record a verdict as it was issued.
+
+        Without this the audit trail is only inputs, and `benchlock replay` could confirm
+        that today's code agrees with itself while saying nothing about what the tool
+        actually told you last March. Storing the verdict is what makes a historical
+        decision checkable rather than merely remembered.
+        """
+        return self._append(
+            RecordType.VERDICT,
+            {
+                "at_system_run": at_system_run,
+                "at_anchor_run": at_anchor_run,
+                "attribution": dict(attribution),
+            },
+        )
+
+    def verdicts(self) -> list[tuple[LedgerRecord, dict[str, Any]]]:
+        """Every recorded verdict, with its record, in order."""
+        return [
+            (record, dict(record.payload["attribution"]))
+            for record in self.verify()
+            if record.type is RecordType.VERDICT
+        ]
 
     def runs(self, kind: StreamKind | None = None) -> list[RunRecord]:
         """Rebuild RunRecords from the ledger. This is what `replay` decides over."""

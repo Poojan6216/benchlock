@@ -48,6 +48,7 @@ from benchlock.config import (
 from benchlock.jsonlog import Level, log
 from benchlock.judge.base import JudgeAdapter, SimulatedJudge, estimate_cost_for
 from benchlock.ledger.log import Ledger, LedgerError, new_run_id
+from benchlock.ledger.replay import replay as replay_ledger
 from benchlock.model.pins import (
     JudgePin,
     PinViolationError,
@@ -57,6 +58,7 @@ from benchlock.model.pins import (
 from benchlock.model.streams import Observation, RunRecord, StreamKind, suite_hash_of
 from benchlock.model.verdict import Attribution, AttributionRefusedError
 from benchlock.report.human import render_verdict_block
+from benchlock.report.markdown import render_markdown
 from benchlock.stats.power import ProvisioningImpossibleError, make_plan
 
 EXIT_OK = 0
@@ -256,6 +258,21 @@ def _attribute(cfg: BenchlockConfig, ledger_path: Path, target_shift: float) -> 
         _die(exc.message, exc.hint)
 
 
+def _record_verdict(book: Ledger, attribution: Attribution) -> None:
+    """Append the verdict to the ledger so `benchlock replay` has something to check.
+
+    An audit trail of inputs alone would let replay confirm that today's code agrees with
+    itself while saying nothing about what the tool actually told you last quarter.
+    """
+    system = book.runs(StreamKind.SYSTEM)
+    anchor = book.runs(StreamKind.ANCHOR)
+    book.append_verdict(
+        attribution.to_json(),
+        at_system_run=system[-1].run_index if system else 0,
+        at_anchor_run=anchor[-1].run_index if anchor else 0,
+    )
+
+
 def _exit_code_for(verdict: str, cfg: BenchlockConfig) -> int:
     """gate.fail_on is the product in one line of YAML: `judge` must not fail your build."""
     if verdict in {v.value for v in cfg.gate.fail_on}:
@@ -405,14 +422,6 @@ def _observations_per_run(book: Ledger, cfg: BenchlockConfig) -> int:
         if runs:
             return runs[-1].n
     return cfg.min_obs
-
-
-def _todo(task: str, phase: str) -> NoReturn:
-    """A subcommand whose backend lands in a later phase. Never silently no-ops."""
-    _die(
-        f"`benchlock {task}` is not implemented yet (arrives in {phase})",
-        "see BUILD_SPEC.md for the build order",
-    )
 
 
 def _version_callback(value: bool) -> None:
@@ -769,6 +778,9 @@ def verdict(
     ledger: LedgerOpt = DEFAULT_LEDGER,
     json_out: Annotated[bool, typer.Option("--json", help="Emit the Attribution as JSON.")] = False,
     target_shift: TargetShiftOpt = 0.05,
+    record: Annotated[
+        bool, typer.Option("--record/--no-record", help="Append the verdict to the ledger.")
+    ] = True,
 ) -> None:
     """Attribute the current score movement: judge, system, both, neither, or unknown."""
     cfg = _load_config(config)
@@ -777,6 +789,8 @@ def verdict(
         typer.echo(json.dumps(attribution.to_json(), indent=2))
     else:
         typer.echo(render_verdict_block(attribution), nl=False)
+    if record:
+        _record_verdict(Ledger(ledger), attribution)
     log.info(
         "verdict.decided",
         verdict=attribution.verdict.value,
@@ -797,6 +811,7 @@ def gate(
     attribution = _attribute(cfg, ledger, target_shift)
     typer.echo(render_verdict_block(attribution), nl=False)
 
+    _record_verdict(Ledger(ledger), attribution)
     code = _exit_code_for(attribution.verdict.value, cfg)
     log.info(
         "gate.decided", verdict=attribution.verdict.value, exit_code=code, rule=attribution.rule_id
@@ -819,9 +834,55 @@ def gate(
 def replay(
     config: ConfigOpt = None,
     ledger: LedgerOpt = DEFAULT_LEDGER,
+    target_shift: TargetShiftOpt = 0.05,
+    json_out: Annotated[bool, typer.Option("--json", help="Emit the report as JSON.")] = False,
 ) -> None:
     """Re-derive every historical verdict from the ledger. A mismatch is a failure."""
-    _todo("replay", "Phase 4.1")
+    cfg = _load_config(config)
+    book = Ledger(ledger)
+    if not book.exists():
+        _die(f"no ledger at {ledger}", "record some runs first with `benchlock observe`")
+    try:
+        report_result = replay_ledger(
+            book, AttributionConfig.from_config(cfg, target_shift=target_shift)
+        )
+    except LedgerError as exc:
+        _die(exc.message, exc.hint or "restore the ledger from version control")
+
+    if json_out:
+        typer.echo(json.dumps(report_result.to_json(), indent=2))
+    elif report_result.ok:
+        typer.secho(
+            f"replay OK: {report_result.checked} historical verdict(s) re-derived exactly "
+            f"under decision semantics v{report_result.semantics_version}",
+            fg=typer.colors.GREEN,
+        )
+    else:
+        typer.secho(
+            f"replay FAILED: {len(report_result.divergences)} of {report_result.checked} "
+            "historical verdict(s) no longer reproduce",
+            fg=typer.colors.RED,
+        )
+        for divergence in report_result.divergences:
+            typer.echo(f"  {divergence.describe()}")
+        for refusal in report_result.refusals:
+            typer.echo(f"  {refusal}")
+        first = report_result.first_divergence
+        if first is not None and first.semantics_changed:
+            typer.secho(
+                "\nThe decision semantics version changed, so both verdicts are reported "
+                "rather than history being rewritten to agree with the new code. If the "
+                "change was intended, this listing is the changelog for it.",
+                fg=typer.colors.YELLOW,
+            )
+    log.info(
+        "replay.finished",
+        checked=report_result.checked,
+        ok=report_result.ok,
+        divergences=len(report_result.divergences),
+    )
+    if not report_result.ok:
+        raise typer.Exit(EXIT_FAIL)
 
 
 @app.command()
@@ -868,9 +929,18 @@ def report(
     config: ConfigOpt = None,
     ledger: LedgerOpt = DEFAULT_LEDGER,
     out: Annotated[Path | None, typer.Option("--out", help="Write markdown here.")] = None,
+    target_shift: TargetShiftOpt = 0.05,
 ) -> None:
     """Markdown for a PR comment: the verdict block, traces, and provisioning status."""
-    _todo("report", "Phase 4.3")
+    cfg = _load_config(config)
+    attribution = _attribute(cfg, ledger, target_shift)
+    markdown = render_markdown(attribution)
+    if out is not None:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(markdown, encoding="utf-8")
+        typer.echo(f"wrote {out}")
+    else:
+        typer.echo(markdown, nl=False)
 
 
 def main() -> None:

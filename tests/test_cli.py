@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import inspect
 import json
+from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
@@ -48,17 +50,39 @@ def test_every_command_has_help(command: str) -> None:
     assert command in result.stdout
 
 
-#: Commands whose backends land in later phases. Shrinks as the build progresses; a
-#: command that disappears from here has been implemented, and its own suite covers it.
-NOT_YET = ["replay", "report"]
+def test_every_command_is_implemented() -> None:
+    """All nine have real backends now; none is a stub that silently does nothing.
+
+    Kept as a regression guard: a command reintroduced as a stub would slip past the
+    help-text tests, which only check that it exists.
+    """
+    from benchlock import cli
+
+    source = Path(inspect.getfile(cli)).read_text()
+    assert "_todo(" not in source, "a command was left as a stub"
 
 
-@pytest.mark.parametrize("command", NOT_YET)
-def test_unimplemented_commands_fail_loudly(command: str) -> None:
-    # Never a silent no-op: exit 3, and the message names the phase it arrives in.
-    result = runner.invoke(app, [command])
+@pytest.mark.parametrize("command", ["verdict", "gate", "replay", "report"])
+def test_commands_fail_loudly_without_a_ledger(command: str, tmp_path: Path) -> None:
+    """Never a stack trace: a missing ledger explains what to do about it."""
+    (tmp_path / "rubric.md").write_text("Score 1-5.\n")
+    (tmp_path / "benchlock.yaml").write_text(
+        "version: 1\nscore_scale: [1, 5]\n"
+        "judge:\n  provider: anthropic\n  model: m\n  rubric: ./rubric.md\n"
+    )
+    result = runner.invoke(
+        app,
+        [
+            command,
+            "--config",
+            str(tmp_path / "benchlock.yaml"),
+            "--ledger",
+            str(tmp_path / ".benchlock" / "ledger.jsonl"),
+        ],
+    )
     assert result.exit_code == EXIT_ERROR
-    assert "not implemented yet" in result.output
+    assert "Traceback" not in result.output
+    assert "benchlock observe" in result.output
 
 
 def test_no_args_prints_help() -> None:
