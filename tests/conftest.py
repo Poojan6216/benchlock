@@ -4,7 +4,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 import pytest
+
+# The `confseq` oracle (0.0.11) predates NumPy 2.0, which removed the `np.float_` alias it
+# uses in type annotations. Restoring the alias is a one-line shim and is strictly better
+# than pinning the whole project to numpy<2 for the sake of a dev-only test oracle.
+# Applied at conftest import so it is in place before pytest collects any test module.
+if not hasattr(np, "float_"):
+    np.float_ = np.float64  # type: ignore[attr-defined]
 
 from benchlock.model.pins import (
     AnchorMode,

@@ -101,12 +101,40 @@ class AgrapaBet:
         return min(max(gap / denom, state.lo), state.hi)
 
 
+@dataclass(frozen=True, slots=True)
+class PredMixEbBet:
+    """Predictable-mixture empirical-Bernstein bet (Waudby-Smith & Ramdas).
+
+    ``lambda_t = sqrt( 2 log(1/alpha) / (t log(1+t) sigma_hat^2_{t-1}) )``, truncated.
+
+    Where aGRAPA chases growth against whatever alternative the data suggest, this bet is
+    tuned for *interval width*, which is what a confidence sequence wants. It is the
+    default bet in the reference `confseq` implementation, so using it here is what makes
+    the Phase 1.3 differential test a like-for-like comparison rather than a coincidence.
+    """
+
+    alpha: float = 0.05
+    truncation: float = DEFAULT_TRUNCATION
+    name: str = "predmix-eb"
+
+    def bet(self, state: BetState) -> float:
+        t = state.t + 1  # the step this bet is for, 1-based
+        denom = t * math.log(1.0 + t) * state.var
+        if denom <= 0.0:  # pragma: no cover - regularised variance keeps this positive
+            return 0.0
+        lam = math.sqrt(2.0 * math.log(1.0 / self.alpha) / denom)
+        lam = min(lam, self.truncation)
+        return min(max(lam, state.lo), state.hi)
+
+
 def make_strategy(name: str) -> BettingStrategy:
     if name == "fixed":
         return FixedBet()
     if name == "agrapa":
         return AgrapaBet()
-    raise ValueError(f"unknown betting strategy {name!r}; use 'fixed' or 'agrapa'")
+    if name == "predmix-eb":
+        return PredMixEbBet()
+    raise ValueError(f"unknown betting strategy {name!r}; use 'fixed', 'agrapa' or 'predmix-eb'")
 
 
 class WealthProcess:
@@ -217,14 +245,20 @@ class WealthProcess:
 
 
 class HedgedWealthProcess:
-    """Two-sided drift detection: a 50/50 mixture of an up-betting and a down-betting process.
+    """Two-sided drift detection, combining an up-betting and a down-betting process.
 
-    A convex combination of martingales is a martingale, so the mixture inherits Ville's
-    inequality exactly. This is what the detector uses, because a judge or a system can
-    drift in either direction and we must not have to guess which in advance.
+    Two valid combinations, both used here:
+
+    * ``convex``  : ``theta*K_up + (1-theta)*K_down`` is itself a martingale.
+    * ``max``     : ``max(theta*K_up, (1-theta)*K_down)`` is dominated by the convex
+      combination, so it is a valid e-process with strictly more power. This is the
+      "hedged capital" process of Waudby-Smith & Ramdas and the default here.
+
+    Either way Ville's inequality applies, and neither requires guessing in advance which
+    way a judge or a system will drift.
     """
 
-    __slots__ = ("down", "theta", "up")
+    __slots__ = ("combine", "down", "theta", "up")
 
     def __init__(
         self,
@@ -233,10 +267,14 @@ class HedgedWealthProcess:
         strategy: BettingStrategy | None = None,
         c: float = DEFAULT_TRUNCATION,
         theta: float = 0.5,
+        combine: str = "max",
     ) -> None:
         if not 0.0 <= theta <= 1.0:
             raise ValueError(f"mixture weight theta must be in [0, 1], got {theta}")
+        if combine not in ("max", "convex"):
+            raise ValueError(f"combine must be 'max' or 'convex', got {combine!r}")
         self.theta = theta
+        self.combine = combine
         self.up = WealthProcess(mu0, side=Side.UP, strategy=strategy, c=c)
         self.down = WealthProcess(mu0, side=Side.DOWN, strategy=strategy, c=c)
 
@@ -260,7 +298,13 @@ class HedgedWealthProcess:
 
     @property
     def log_wealth(self) -> float:
-        """log(theta*K_up + (1-theta)*K_down), by log-sum-exp so it never overflows."""
+        """Combined log-wealth, computed in log space so it never overflows."""
+        log_up = math.log(self.theta) + self.up.log_wealth if self.theta > 0 else -math.inf
+        log_down = (
+            math.log(1.0 - self.theta) + self.down.log_wealth if self.theta < 1 else -math.inf
+        )
+        if self.combine == "max":
+            return max(log_up, log_down)
         return _log_mix(self.theta, self.up.log_wealth, 1.0 - self.theta, self.down.log_wealth)
 
     @property

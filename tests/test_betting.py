@@ -274,12 +274,28 @@ def test_hedged_process_detects_drift_in_either_direction() -> None:
     assert HedgedWealthProcess(0.5).direction in (Side.UP, Side.DOWN)
 
 
-def test_hedged_wealth_is_the_mixture_of_its_legs() -> None:
+def test_hedged_wealth_combines_its_legs_correctly() -> None:
     xs = [0.9, 0.8, 0.7, 0.95, 0.85]
-    process = HedgedWealthProcess(0.5)
-    process.update_many(xs)
-    expected = 0.5 * math.exp(process.up.log_wealth) + 0.5 * math.exp(process.down.log_wealth)
-    assert process.wealth == pytest.approx(expected, rel=1e-12)
+
+    convex = HedgedWealthProcess(0.5, combine="convex")
+    convex.update_many(xs)
+    assert convex.wealth == pytest.approx(
+        0.5 * math.exp(convex.up.log_wealth) + 0.5 * math.exp(convex.down.log_wealth), rel=1e-12
+    )
+
+    hedged = HedgedWealthProcess(0.5, combine="max")
+    hedged.update_many(xs)
+    assert hedged.wealth == pytest.approx(
+        max(0.5 * math.exp(hedged.up.log_wealth), 0.5 * math.exp(hedged.down.log_wealth)),
+        rel=1e-12,
+    )
+    # max is dominated by the convex combination, so it is valid and strictly more powerful.
+    assert hedged.log_wealth <= convex.log_wealth + 1e-12
+
+
+def test_unknown_combination_mode_is_rejected() -> None:
+    with pytest.raises(ValueError, match="combine must be"):
+        HedgedWealthProcess(0.5, combine="geometric")
 
 
 def test_log_wealth_survives_a_long_extreme_run() -> None:
