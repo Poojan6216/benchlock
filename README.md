@@ -106,6 +106,8 @@ measured and warned about. It is never guaranteed. Reproduce with
 
 ## The mechanism, in three lines
 
+![Two streams, one judge, four answers](docs/assets/mechanism.svg)
+
 Hold a frozen anchor set that the system under test never touches, and have the judge
 re-score it every run.
 

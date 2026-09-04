@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 400" width="880" height="400"
+     font-family="ui-sans-serif, -apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+  <style>
+    .bg    { fill: #ffffff; }
+    .lbl   { font-size: 13px; fill: #1f2328; }
+    .small { font-size: 11px; fill: #57606a; }
+    .mono  { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+    .box   { fill: #f6f8fa; stroke: #d0d7de; stroke-width: 1.5; rx: 8; }
+    .sys   { stroke: #1f77b4; stroke-width: 2.5; fill: none; }
+    .anc   { stroke: #2ca02c; stroke-width: 2.5; fill: none; }
+    .head  { font-size: 15px; font-weight: 600; fill: #1f2328; }
+    @media (prefers-color-scheme: dark) {
+      .bg   { fill: #0d1117; }
+      .lbl, .head { fill: #e6edf3; }
+      .small { fill: #8b949e; }
+      .box  { fill: #161b22; stroke: #30363d; }
+    }
+  </style>
+  <rect class="bg" width="880" height="400"/>
+
+  <text class="head" x="24" y="30">Two streams, one judge</text>
+
+  <!-- system stream -->
+  <rect class="box" x="24" y="52" width="200" height="66"/>
+  <text class="lbl" x="38" y="76">system under test</text>
+  <text class="small" x="38" y="96">regenerated every run</text>
+  <text class="small" x="38" y="110">the thing you changed</text>
+
+  <!-- anchor stream -->
+  <rect class="box" x="24" y="146" width="200" height="80"/>
+  <text class="lbl" x="38" y="170">frozen anchor set</text>
+  <text class="small" x="38" y="190">(item, output) pairs, pinned</text>
+  <text class="small" x="38" y="204">at baseline and never</text>
+  <text class="small" x="38" y="218">regenerated</text>
+
+  <!-- judge -->
+  <rect class="box" x="330" y="98" width="150" height="82"/>
+  <text class="lbl" x="356" y="126">the judge</text>
+  <text class="small" x="346" y="146">a hosted model that</text>
+  <text class="small" x="346" y="160">can move underneath</text>
+  <text class="small" x="346" y="174">you at any time</text>
+
+  <path class="sys" d="M224 85 C 280 85, 290 122, 330 130" marker-end="url(#bluearrow)"/>
+  <path class="anc" d="M224 186 C 280 186, 290 152, 330 148" marker-end="url(#greenarrow)"/>
+
+  <path class="sys" d="M480 126 C 530 126, 540 96, 600 96" marker-end="url(#bluearrow)"/>
+  <path class="anc" d="M480 152 C 530 152, 540 186, 600 186" marker-end="url(#greenarrow)"/>
+
+  <text class="lbl" x="608" y="92">E_system</text>
+  <text class="small" x="608" y="110">moved by the system OR the judge</text>
+  <text class="lbl" x="608" y="182">E_anchor</text>
+  <text class="small" x="608" y="200">only the judge can move this</text>
+
+  <!-- verdict lattice -->
+  <line x1="24" y1="252" x2="856" y2="252" stroke="#d0d7de" stroke-width="1"/>
+  <text class="head" x="24" y="280">The four answers, and the one that matters</text>
+
+  <rect class="box" x="24" y="296" width="196" height="80"/>
+  <text class="lbl mono" x="38" y="320">judge</text>
+  <text class="small" x="38" y="340">anchor moved</text>
+  <text class="small" x="38" y="356">do not roll back;</text>
+  <text class="small" x="38" y="370">re-baseline. CI passes</text>
+
+  <rect class="box" x="236" y="296" width="196" height="80"/>
+  <text class="lbl mono" x="250" y="320">system</text>
+  <text class="small" x="250" y="340">system moved, anchor</text>
+  <text class="small" x="250" y="356">did not, and the anchor</text>
+  <text class="small" x="250" y="370">had the power. CI fails</text>
+
+  <rect class="box" x="448" y="296" width="196" height="80"/>
+  <text class="lbl mono" x="462" y="320">both</text>
+  <text class="small" x="462" y="340">both moved; correction</text>
+  <text class="small" x="462" y="356">does not explain it.</text>
+  <text class="small" x="462" y="370">Confounded. CI fails</text>
+
+  <rect class="box" x="660" y="296" width="196" height="80" stroke="#bf8700" stroke-width="2.5"/>
+  <text class="lbl mono" x="674" y="320">indeterminate</text>
+  <text class="small" x="674" y="340">the anchor set was too</text>
+  <text class="small" x="674" y="356">small to rule out the</text>
+  <text class="small" x="674" y="370">judge. Refuses to guess</text>
+
+  <defs>
+    <marker id="bluearrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6"
+            markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#1f77b4"/>
+    </marker>
+    <marker id="greenarrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6"
+            markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#2ca02c"/>
+    </marker>
+  </defs>
+</svg>

@@ -809,14 +809,14 @@ gate:
 - [x] **9.3 — CI**
   ruff, mypy strict, pytest with coverage, plus the mandatory tests promoted to their own named jobs so a failure is unmissable: the secret-leak test (0.4), the conservative-pruning property test (1.4), the determinism test (2.3), the replay test (4.1), the concurrency stress test (8.4), and the README-number-traceability check (9.1). Nightly: the full simulation study, failing the build if any headline metric regresses beyond a committed threshold. **The benchmark is a test, not a marketing artefact.**
 
-- [ ] **9.4 — Package and release**
+- [x] **9.4 — Package and release**
   Publish to PyPI as `benchlock`. Version 0.1.0. CHANGELOG. Tagged release with `RESULTS.md` attached. Verify a clean-machine install: `uv tool install benchlock && benchlock --help`.
 
-- [ ] **9.5 — The write-up**
+- [x] **9.5 — The write-up**
   A technical post. **Lead with Demo 3 — the `indeterminate` verdict — and the anti-result from 5.4.** The shareable thesis is not "we built a drift detector"; it is *"your eval dashboard has been lying to you in two different ways, and here is the arithmetic, including the part where our method is slower than the wrong one."* Then: the identification argument, the provisioning rule, the judge-self-disagreement number from 6.5, and the attacks that beat us.
   Title it around the negative result or the self-disagreement number. That is the part people share.
 
-- [ ] **9.6 — The launch artefacts**
+- [x] **9.6 — The launch artefacts**
   One diagram (the two streams and the four verdicts — SVG, in the README). One 30-second terminal recording of Demo 1. A LinkedIn/X post that leads with a single number — the judge self-disagreement figure from 6.5 or the peeking false-alarm rate from 5.5 — and links the repo. **No thread of twelve posts. One number, one link, one honest caveat.**
 
 **Phase Gate:** `uv tool install benchlock` works on a clean machine, the GitHub Action runs green in a second repo, and the demo reproduces.
