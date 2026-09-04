@@ -1,0 +1,115 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Nightly: the full simulation study. The benchmark is a test, not a marketing artefact.
+    - cron: "0 3 * * *"
+
+env:
+  # confseq 0.0.11 predates NumPy 2.0; the shim lives in tests/conftest.py.
+  BENCHLOCK_LOG_TS: "0"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { enable-cache: true }
+      - run: uv sync
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy --strict src/
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { enable-cache: true }
+      - name: Install Boost for the confseq oracle
+        run: sudo apt-get update && sudo apt-get install -y libboost-dev cmake
+      - run: uv sync --group oracle
+      - name: Test suite with coverage
+        run: uv run pytest -m "not slow" --cov --cov-report=term-missing
+
+  # The Hard Rule tests get their own named jobs, so a failure is unmissable in the
+  # checks list rather than buried in a 400-line pytest log.
+  hard-rule-9-no-secrets-in-the-ledger:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - run: uv run pytest tests/test_ledger.py -k secrets -v
+
+  hard-rule-4-conservative-pruning:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - run: uv run pytest tests/test_edetector.py -m mandatory -v
+
+  hard-rule-7-determinism:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - run: uv run pytest tests/test_engine.py -m mandatory -v
+
+  replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - run: uv run pytest tests/test_replay.py -m mandatory -v
+
+  concurrency-stress:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - run: uv run pytest tests/test_concurrency.py -v
+
+  readme-numbers-are-traceable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - run: uv run python scripts/check_numbers.py
+
+  # Benchlock gating its own repository, on its own fixture streams.
+  dogfood:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - name: Build a ledger from a fixture stream and gate on it
+        run: uv run python scripts/dogfood.py
+
+  nightly-simulation:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - run: uv run python bench/sim/run_sim.py --headline --seeds 500 --horizon 150
+      - run: uv run python bench/sim/run_sim.py --all --seeds 100 --horizon 60
+      - run: uv run python bench/adversarial/run_adversarial.py --all
+      - name: Fail if a headline metric regressed
+        run: uv run python scripts/check_regression.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: simulation-results
+          path: bench/results/

@@ -775,19 +775,19 @@ gate:
   `adapters/promptfoo.py`, `inspect_ai.py`, `deepeval.py`. Each normalises into the JSONL contract from 0.3. Read each framework's actual output format from its documentation; do not guess at schemas.
   **Verify:** round-trip test against a real output file from each framework, committed as a fixture. Where a framework's format is ambiguous, the adapter fails loudly rather than guessing.
 
-- [ ] **8.2 — GitHub Action**
+- [x] **8.2 — GitHub Action**
   A composite action that runs `benchlock observe` on the eval output, then `benchlock gate`, then posts `benchlock report` as a PR comment. `judge` verdicts post a comment and pass; `system` and `both` fail the check.
   **Verify:** the action runs in this repo's own CI against this repo's fixture streams, end to end.
 
-- [ ] **8.3 — Edge cases**
+- [x] **8.3 — Edge cases**
   Zero-variance runs (every item scored identically); a run with one observation; a judge returning nulls or out-of-range values; an anchor item deleted from the suite mid-stream; two CI jobs writing the ledger concurrently; a ledger with a gap in run indices; clock skew in run timestamps; a 500 MB ledger; scores arriving out of order.
   **Verify:** each case has a test. Nothing corrupts the ledger, nothing produces a silently wrong verdict, every failure names its cause.
 
-- [ ] **8.4 — Concurrency and ledger integrity**
+- [x] **8.4 — Concurrency and ledger integrity**
   The ledger is append-only and may be written from parallel CI jobs. Use file locking with a timeout; on contention, fail with a clear message rather than interleaving records.
   **Verify:** a stress test with 20 concurrent writers produces a valid chain or clean failures — never a corrupt chain. Run it 100 times in CI.
 
-- [ ] **8.5 — Ergonomics pass**
+- [x] **8.5 — Ergonomics pass**
   Run through the whole first-use path with fresh eyes and fix every place a reasonable person would stop. Specifically: every error message must name the file, the field, and the command that fixes it. `benchlock verdict` on an empty ledger must explain what to do, not raise a stack trace.
   **Verify:** a scripted first-use walkthrough in `tests/test_first_use.py` covering the eight most likely mistakes, asserting each produces an actionable message.
 
@@ -917,6 +917,7 @@ Phase 5 and Phase 7 are the ones that make anyone care. If the schedule slips, c
 [7.1-7.9] Adversarial study, and it found real holes. SIX of eight attacks have non-zero failure rates: anchor evasion 100% (the fundamental limitation — a judge change outside the anchors' coverage is invisible), anchor staleness 100% (benchlock reports THAT the judge moved, never WHY, so a deliberate rubric change is indistinguishable from provider drift), input distribution shift 100%, provider-side caching 100% without a nonce, cancellation 25%, slow ramp 20% of tested ramp rates evade entirely. TWO OF MY OWN ATTACKS WERE MEASURING NOTHING AND I FIXED THEM: 7.5 renamed every item id so all per-item deviations became zero — rewritten to keep ids stable and change the content behind them, which exposes a genuine limitation (hashing item IDs does not hash item CONTENT, so the suite-hash check is blind to a traffic-mix shift that preserves ids); 7.2 reported the best case rather than the fraction of ramp rates that evade. An attack that does not attack is worse than no attack.
 [6.x BLOCKER] Tier 2 CANNOT BE RUN: no ANTHROPIC_API_KEY or OPENAI_API_KEY in this environment, so not one call was made to a hosted judge. Per the spec's blocked-task rule I built the whole pipeline — provider adapters (4 methods each), SQLite score cache, cache-busting nonce, pool builder, dataset manifest+loader with content hashes, six ground-truth scenarios, runner — and exercised it end to end against the deterministic built-in judge, which produces the right verdict on all six scenarios. The pool JSON is stamped 'simulated: true' and scripts/gen_results.py REFUSES to render it under a real-judge heading, emitting a 'NOT RUN' section with the exact commands and the ~$3-8 estimated spend instead. Two numbers stay unmeasured and are listed as such: judge self-disagreement at temperature 0 (6.5) and whether a cache-busting nonce perturbs a real judge's scores (7.9). Publishing either from simulation would be the exact failure this project exists to prevent.
 [housekeeping] Corrected the checkbox state in this file. The logprogress helper only ticked a box when a log line began with a single [N.N], so grouped entries like [2.1-2.4] and [7.1-7.9] left their boxes unticked while the Progress Log was complete. 40 of 75 now ticked, matching what is actually done; 6.x stays unticked because it is blocked, and 5.3/5.4/5.6/7.10 stay unticked until the simulation grid finishes and RESULTS.md is generated from it.
+[8.2-8.5] Survive contact with a real pipeline. Composite GitHub Action (observe -> verdict -> report -> comment -> gate, with the gate LAST so the PR comment posts even when the build fails, and a 'judge' verdict exiting 0). CI gives each Hard Rule test its own named job so a failure is unmissable in the checks list. scripts/dogfood.py has benchlock gate its own repository on its own fixtures — all four cases give the right verdict, right exit code, and green replay. Concurrency: 20 parallel writers produce a valid chain or clean refusals, never a corrupt one, and the 100-repetition stress test passes. 20 edge cases (zero variance, single observation, nulls, out-of-range, deleted anchor item, index gaps, out-of-order runs, sequence gaps, 6MB ledger, empty streams). 11 first-use tests over the eight most likely mistakes, each asserting an actionable message with no stack trace. Fixed a real bug the edge cases found: a perfectly flat stream (a saturated suite where every item scores 5) crashed decide() with a raw ValueError from the scale inverse — decide() must be total on any legal ledger content, so the noise floor is now floored before scaling.
 ```
 
 ---

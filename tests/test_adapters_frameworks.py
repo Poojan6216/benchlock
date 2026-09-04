@@ -73,7 +73,7 @@ def test_inspect_json_log_with_letter_grades() -> None:
     observations = inspect_ai.load(FIXTURES / "inspect-log.json", (0.0, 1.0))
     assert len(observations) == 40
     # "C" -> 1.0 and "I" -> 0.0, mapped explicitly rather than coerced.
-    assert set(o.score for o in observations) == {0.0, 1.0}
+    assert {o.score for o in observations} == {0.0, 1.0}
 
 
 def test_inspect_eval_archive_is_read() -> None:

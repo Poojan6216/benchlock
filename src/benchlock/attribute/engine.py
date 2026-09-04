@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import statistics
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from benchlock.attribute.lattice import apply_lattice
 from benchlock.attribute.race import check_race
@@ -204,6 +204,11 @@ def decide(
     # --- the anchor stream: a frozen snapshot, so its null is known -----------------------
     anchor_pin = anchor_runs[-1].anchor_pin if anchor_runs else None
     noise_floor = anchor_pin.noise_floor if anchor_pin is not None else _placeholder_floor()
+    # A perfectly flat stream is legal — a saturated suite where every item scores 5 has
+    # genuinely zero measured variance — but a zero scale has no inverse. Flooring keeps
+    # `decide` total on any ledger content, which matters because a ledger can be written
+    # by an older version and must still be replayable.
+    noise_floor = replace(noise_floor, run_mean_sd=max(noise_floor.run_mean_sd, _MIN_SD))
     anchor_n = anchor_pin.n if anchor_pin is not None else 0
     replicates = noise_floor.replicates
 

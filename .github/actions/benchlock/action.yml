@@ -1,0 +1,92 @@
+name: Benchlock
+description: >-
+  Attribute eval score movement to your system or your judge, and gate CI on the answer.
+  A judge change posts a comment and passes; a real regression fails the check.
+
+inputs:
+  results:
+    description: Path to your eval output (the file your eval framework writes).
+    required: true
+  config:
+    description: Path to benchlock.yaml.
+    required: false
+    default: benchlock.yaml
+  ledger:
+    description: Path to the append-only ledger.
+    required: false
+    default: .benchlock/ledger.jsonl
+  target-shift:
+    description: The smallest judge shift your anchor set was provisioned to catch.
+    required: false
+    default: "0.05"
+  comment:
+    description: Post the verdict as a PR comment.
+    required: false
+    default: "true"
+  rescore-anchors:
+    description: Re-score the frozen anchor set as part of this run.
+    required: false
+    default: "true"
+
+outputs:
+  verdict:
+    description: stable | judge | system | both | indeterminate
+    value: ${{ steps.gate.outputs.verdict }}
+  rule:
+    description: The lattice rule that produced the verdict.
+    value: ${{ steps.gate.outputs.rule }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install benchlock
+      shell: bash
+      run: pipx install benchlock || pip install --user benchlock
+
+    - name: Record this run
+      shell: bash
+      run: |
+        benchlock observe "${{ inputs.results }}" \
+          --config "${{ inputs.config }}" \
+          --ledger "${{ inputs.ledger }}" \
+          ${{ inputs.rescore-anchors == 'true' && '--rescore-anchors' || '' }}
+
+    - name: Attribute the movement
+      id: gate
+      shell: bash
+      run: |
+        set +e
+        benchlock verdict --json --no-record \
+          --config "${{ inputs.config }}" \
+          --ledger "${{ inputs.ledger }}" \
+          --target-shift "${{ inputs.target-shift }}" > verdict.json
+        python -c "
+        import json, os
+        v = json.load(open('verdict.json'))
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+            f.write(f\"verdict={v['verdict']}\n\")
+            f.write(f\"rule={v['rule_id']}\n\")
+        "
+        benchlock report \
+          --config "${{ inputs.config }}" \
+          --ledger "${{ inputs.ledger }}" \
+          --target-shift "${{ inputs.target-shift }}" \
+          --out benchlock-report.md
+        cat benchlock-report.md >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Comment on the pull request
+      if: ${{ inputs.comment == 'true' && github.event_name == 'pull_request' }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: gh pr comment "${{ github.event.number }}" --body-file benchlock-report.md
+
+    # Last, so the comment is posted even when the gate fails. A `judge` verdict exits 0:
+    # a judge change must not fail your build, it must tell you to re-baseline.
+    - name: Gate
+      shell: bash
+      run: |
+        benchlock gate \
+          --config "${{ inputs.config }}" \
+          --ledger "${{ inputs.ledger }}" \
+          --target-shift "${{ inputs.target-shift }}"
