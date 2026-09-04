@@ -1,0 +1,41 @@
+# Benchlock configuration. Copy to `benchlock.yaml`, or run `benchlock init` to have
+# one written from whatever eval framework you already use.
+version: 1
+
+# The false-alarm budget for the whole monitoring process, not per run. Because the
+# tests are anytime-valid, this holds no matter how many times you look.
+alpha: 0.05
+
+# REQUIRED. The range your rubric emits. Benchlock normalises to [0,1] internally and
+# keeps the raw value; an undeclared or out-of-range score is an error, not a warning.
+score_scale: [1, 5]
+
+min_runs: 8     # no verdict is attempted before this many runs
+min_obs: 30     # minimum judged items in a run
+
+system:
+  adapter: promptfoo          # jsonl | promptfoo | inspect_ai | deepeval
+  path: ./evals/results/
+
+anchor:
+  # The control group: items the system under test never touches, re-scored by the judge
+  # every run. If these move, only the judge can have moved them.
+  mode: frozen-self           # frozen-self (default, needs no labels) | human | replicate
+  n: 260                      # size it with `benchlock plan --target-shift 0.05`
+  cadence: 1                  # re-score anchors every N runs
+  selection: stratified       # stratified over score decile and item tag
+  noise_replicates: 5         # K, measured once at baseline
+  seed: 0                     # pinned, so selection is reproducible
+
+judge:
+  provider: anthropic
+  model: claude-sonnet-4-5-20250929   # the exact dated snapshot
+  rubric: ./evals/rubric.md
+  params:
+    temperature: 0.0
+    max_tokens: 512
+
+gate:
+  # A judge change must NOT fail your build. It must tell you to re-baseline.
+  fail_on: [system, both]
+  warn_on: [indeterminate]

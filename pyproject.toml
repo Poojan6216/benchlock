@@ -95,6 +95,9 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+# In a Typer app the command signature *is* the CLI surface: parameters are declared to
+# create flags, and a command that does not read one of its own flags is not a smell.
+"src/benchlock/cli.py" = ["ARG001"]
 "tests/*" = ["ANN", "ARG", "B", "E501"]
 "bench/*" = ["ANN", "ARG"]
 

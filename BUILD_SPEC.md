@@ -496,7 +496,7 @@ gate:
   `uv init`, pyproject per §5, ruff + mypy strict, Apache-2.0 LICENSE, pytest layout, pre-commit running ruff and mypy.
   **Verify:** `uv run ruff check`, `uv run mypy --strict src/`, `uv run pytest` all pass on an empty suite.
 
-- [ ] **0.2 — Config model and CLI skeleton**
+- [x] **0.2 — Config model and CLI skeleton**
   `config.py` with the §7 Pydantic models, schema version, and clear line-numbered errors on invalid YAML. `cli.py` with all nine subcommands present (stubs beyond `init` and `observe`). Structured JSON logs to stderr.
   **Verify:** 12+ malformed configs each produce a specific, actionable error naming the field and line. Round-trip load → dump → load is stable.
 
@@ -891,6 +891,7 @@ Phase 5 and Phase 7 are the ones that make anyone care. If the schedule slips, c
 
 ```
 [0.1] Scaffold: uv/hatchling pyproject (py3.12+), ruff line-100, mypy --strict, pytest+hypothesis, Apache-2.0, pre-commit. Decision: confseq oracle needs Boost headers so it lives in its own 'oracle' dependency group (brew install boost); CI installs it so the 1.3 differential test always runs. confseq 0.0.11 predates NumPy 2 (np.float_) — tests apply a one-line shim rather than pinning numpy<2.
+[0.2] Config + CLI skeleton: Pydantic v2 models (extra=forbid everywhere so typos are errors), schema version 1, YAML composed to a node tree for path->line mapping so every validation error prints file:line, field path and a fix hint. 21 malformed configs tested + 6 exact-line assertions. Nine subcommands present; unimplemented ones exit 3 naming the phase they arrive in, never a silent no-op. Structured JSON logs to stderr (stdout stays clean for piping). Decision: NoiseFloor + AnchorMode live in model/pins.py so model/ has no internal deps; anchor/noisefloor.py is the estimator that produces one.
 ```
 
 ---
