@@ -7,7 +7,7 @@
   "trials": 100,
   "alpha": 0.05,
   "measured_floor_false_alarm_rate": 0.0,
-  "assumed_quiet_judge_false_alarm_rate": 0.29,
+  "assumed_quiet_judge_false_alarm_rate": 0.54,
   "note": "Both arms monitor identical drift-free streams with identical scaling. They differ only in how wide the null is: sized against the measured noise floor, or against a judge assumed 50x quieter than it is. The frozen snapshot is itself one noisy measurement, so it sits a persistent offset away from the judge's true mean, and a null too narrow to cover that offset reads it as drift that never goes away.",
   "command": "uv run pytest tests/test_noisefloor.py -k zero_noise_floor"
 }
