@@ -48,7 +48,12 @@ def test_every_command_has_help(command: str) -> None:
     assert command in result.stdout
 
 
-@pytest.mark.parametrize("command", ["verdict", "gate", "replay", "report", "plan", "baseline"])
+#: Commands whose backends land in later phases. Shrinks as the build progresses; a
+#: command that disappears from here has been implemented, and its own suite covers it.
+NOT_YET = ["replay", "report", "plan", "baseline"]
+
+
+@pytest.mark.parametrize("command", NOT_YET)
 def test_unimplemented_commands_fail_loudly(command: str) -> None:
     # Never a silent no-op: exit 3, and the message names the phase it arrives in.
     result = runner.invoke(app, [command])

@@ -13,6 +13,7 @@ line of a CI job:
 
 from __future__ import annotations
 
+import json
 import sys
 import time
 from dataclasses import replace
@@ -25,11 +26,20 @@ from benchlock import __version__
 from benchlock.adapters import Detection, detect_framework
 from benchlock.adapters.jsonl import IngestError
 from benchlock.adapters.jsonl import load as load_jsonl
-from benchlock.config import DEFAULT_CONFIG_NAME, BenchlockConfig, ConfigError, discover_config_path
+from benchlock.attribute.engine import decide
+from benchlock.config import (
+    DEFAULT_CONFIG_NAME,
+    AttributionConfig,
+    BenchlockConfig,
+    ConfigError,
+    discover_config_path,
+)
 from benchlock.jsonlog import Level, log
 from benchlock.ledger.log import Ledger, LedgerError, new_run_id
 from benchlock.model.pins import JudgePin, PinViolationError, check_anchor_pin, check_judge_pin
 from benchlock.model.streams import RunRecord, StreamKind, suite_hash_of
+from benchlock.model.verdict import Attribution, AttributionRefusedError
+from benchlock.report.human import render_verdict_block
 
 EXIT_OK = 0
 EXIT_FAIL = 1
@@ -58,6 +68,13 @@ LedgerOpt = Annotated[
     typer.Option("--ledger", help="Path to the append-only ledger."),
 ]
 DEFAULT_LEDGER = Path(".benchlock/ledger.jsonl")
+TargetShiftOpt = Annotated[
+    float,
+    typer.Option(
+        "--target-shift",
+        help="The judge shift the anchor set was provisioned to catch. Sets the monitoring band.",
+    ),
+]
 
 
 def _die(message: str, hint: str | None = None, code: int = EXIT_ERROR) -> NoReturn:
@@ -163,6 +180,41 @@ gate:
   fail_on: [system, both]
   warn_on: [indeterminate]
 """
+
+
+def _attribute(cfg: BenchlockConfig, ledger_path: Path, target_shift: float) -> Attribution:
+    """Load the ledger and decide. Shared by `verdict`, `gate` and `report`."""
+    book = Ledger(ledger_path)
+    if not book.exists():
+        _die(
+            f"no ledger at {ledger_path}",
+            "record some runs first: `benchlock observe <your-eval-output.jsonl>`",
+        )
+    try:
+        system = book.runs(StreamKind.SYSTEM)
+        anchor = book.runs(StreamKind.ANCHOR)
+    except LedgerError as exc:
+        _die(exc.message, exc.hint or "restore the ledger from version control")
+
+    if not system:
+        _die(
+            "the ledger holds no system runs yet",
+            "run `benchlock observe <your-eval-output.jsonl>` after each eval run",
+        )
+
+    try:
+        return decide(system, anchor, AttributionConfig.from_config(cfg, target_shift=target_shift))
+    except AttributionRefusedError as exc:
+        _die(exc.message, exc.hint)
+
+
+def _exit_code_for(verdict: str, cfg: BenchlockConfig) -> int:
+    """gate.fail_on is the product in one line of YAML: `judge` must not fail your build."""
+    if verdict in {v.value for v in cfg.gate.fail_on}:
+        return EXIT_FAIL
+    if verdict in {v.value for v in cfg.gate.warn_on}:
+        return EXIT_WARN
+    return EXIT_OK
 
 
 def _todo(task: str, phase: str) -> NoReturn:
@@ -374,18 +426,46 @@ def verdict(
     config: ConfigOpt = None,
     ledger: LedgerOpt = DEFAULT_LEDGER,
     json_out: Annotated[bool, typer.Option("--json", help="Emit the Attribution as JSON.")] = False,
+    target_shift: TargetShiftOpt = 0.05,
 ) -> None:
     """Attribute the current score movement: judge, system, both, neither, or unknown."""
-    _todo("verdict", "Phase 2.3")
+    cfg = _load_config(config)
+    attribution = _attribute(cfg, ledger, target_shift)
+    if json_out:
+        typer.echo(json.dumps(attribution.to_json(), indent=2))
+    else:
+        typer.echo(render_verdict_block(attribution), nl=False)
+    log.info(
+        "verdict.decided",
+        verdict=attribution.verdict.value,
+        rule=attribution.rule_id,
+        e_system=round(attribution.evidence.e_system, 3),
+        e_anchor=round(attribution.evidence.e_anchor, 3),
+    )
 
 
 @app.command()
 def gate(
     config: ConfigOpt = None,
     ledger: LedgerOpt = DEFAULT_LEDGER,
+    target_shift: TargetShiftOpt = 0.05,
 ) -> None:
     """Print the verdict and exit 0/1/2 per gate.fail_on. The last line of a CI job."""
-    _todo("gate", "Phase 2.6")
+    cfg = _load_config(config)
+    attribution = _attribute(cfg, ledger, target_shift)
+    typer.echo(render_verdict_block(attribution), nl=False)
+
+    code = _exit_code_for(attribution.verdict.value, cfg)
+    log.info(
+        "gate.decided", verdict=attribution.verdict.value, exit_code=code, rule=attribution.rule_id
+    )
+    if code == EXIT_FAIL:
+        typer.secho(f"gate: FAIL — verdict `{attribution.verdict.value}`", fg=typer.colors.RED)
+    elif code == EXIT_WARN:
+        typer.secho(f"gate: WARN — verdict `{attribution.verdict.value}`", fg=typer.colors.YELLOW)
+    else:
+        typer.secho(f"gate: PASS — verdict `{attribution.verdict.value}`", fg=typer.colors.GREEN)
+    raise typer.Exit(code)
 
 
 # ---------------------------------------------------------------------------------------
