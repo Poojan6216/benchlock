@@ -186,8 +186,17 @@ def decide(
     alpha = config.alpha
     _, alpha_monitor = split_alpha(alpha)
 
+    # Hard Rule 8: a rebaseline starts a new epoch, and verdicts never compare across the
+    # boundary. History before it is retained and replayable — it is simply not mixed in
+    # with measurements taken under a different judge or a different anchor set.
     system_runs = [r for r in system if r.kind is StreamKind.SYSTEM]
     anchor_runs = [r for r in anchor if r.kind is StreamKind.ANCHOR]
+    current_epoch = max(
+        [r.epoch for r in (*system_runs, *anchor_runs)],
+        default=0,
+    )
+    system_runs = [r for r in system_runs if r.epoch == current_epoch]
+    anchor_runs = [r for r in anchor_runs if r.epoch == current_epoch]
 
     pin_delta, pin_rebaselined = _pin_state(system_runs, anchor_runs)
     suite_ok = _suite_hashes_agree(system_runs)
@@ -299,7 +308,7 @@ def decide(
         n_runs=len(system_runs),
         n_anchor_runs=anchor_analysis.n_monitored,
         anchor_n=anchor_n,
-        epoch=system_runs[-1].epoch if system_runs else 0,
+        epoch=current_epoch,
         baseline_judge_model=system_runs[0].judge_pin.model if system_runs else "",
         current_judge_model=system_runs[-1].judge_pin.model if system_runs else "",
         judge_pin_changed_at=_pin_change_index(system_runs),

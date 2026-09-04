@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import sys
 import time
+from collections.abc import Mapping
 from dataclasses import replace
 from pathlib import Path
 from typing import Annotated, NoReturn
@@ -26,6 +27,16 @@ from benchlock import __version__
 from benchlock.adapters import Detection, detect_framework
 from benchlock.adapters.jsonl import IngestError
 from benchlock.adapters.jsonl import load as load_jsonl
+from benchlock.anchor.coverage import measure_coverage
+from benchlock.anchor.modes import (
+    AnchorItem,
+    AnchorModeError,
+    check_mode_supported,
+    freeze,
+    load_anchors,
+    save_anchors,
+)
+from benchlock.anchor.select import Candidate, select_anchors
 from benchlock.attribute.engine import decide
 from benchlock.config import (
     DEFAULT_CONFIG_NAME,
@@ -35,11 +46,18 @@ from benchlock.config import (
     discover_config_path,
 )
 from benchlock.jsonlog import Level, log
+from benchlock.judge.base import JudgeAdapter, SimulatedJudge, estimate_cost_for
 from benchlock.ledger.log import Ledger, LedgerError, new_run_id
-from benchlock.model.pins import JudgePin, PinViolationError, check_anchor_pin, check_judge_pin
-from benchlock.model.streams import RunRecord, StreamKind, suite_hash_of
+from benchlock.model.pins import (
+    JudgePin,
+    PinViolationError,
+    check_anchor_pin,
+    check_judge_pin,
+)
+from benchlock.model.streams import Observation, RunRecord, StreamKind, suite_hash_of
 from benchlock.model.verdict import Attribution, AttributionRefusedError
 from benchlock.report.human import render_verdict_block
+from benchlock.stats.power import ProvisioningImpossibleError, make_plan
 
 EXIT_OK = 0
 EXIT_FAIL = 1
@@ -98,12 +116,42 @@ def _load_config(path: Path | None) -> BenchlockConfig:
     except ConfigError as exc:
         typer.secho(exc.render(), fg=typer.colors.RED, err=True)
         raise typer.Exit(EXIT_ERROR) from exc
+    cfg = _resolve_paths(cfg, resolved.parent)
     log.debug("config.loaded", path=str(resolved), alpha=cfg.alpha)
     return cfg
 
 
-def _judge_pin(cfg: BenchlockConfig) -> JudgePin:
-    """Hash the judge configuration. The rubric must be readable: it is part of the pin."""
+def _resolve_paths(cfg: BenchlockConfig, root: Path) -> BenchlockConfig:
+    """Make relative paths relative to the *config file*, not the working directory.
+
+    A committed `benchlock.yaml` says `rubric: ./evals/rubric.md`, and that has to mean
+    the same thing whether CI runs from the repo root or a subdirectory. Resolving
+    against the config's own directory is the only reading that survives being checked in.
+    """
+
+    def under(path: Path) -> Path:
+        return path if path.is_absolute() else (root / path)
+
+    return cfg.model_copy(
+        update={
+            "judge": cfg.judge.model_copy(update={"rubric": under(cfg.judge.rubric)}),
+            "system": cfg.system.model_copy(update={"path": under(cfg.system.path)}),
+            "anchor": cfg.anchor.model_copy(
+                update={"labels": under(cfg.anchor.labels) if cfg.anchor.labels else None}
+            ),
+        }
+    )
+
+
+def _judge_pin(cfg: BenchlockConfig, *, simulate: bool = False) -> JudgePin:
+    """Hash the judge configuration. The rubric must be readable: it is part of the pin.
+
+    `--simulate` is part of the judge's identity, not a testing convenience bolted on
+    beside it: a simulated judge and a hosted one are different measuring instruments, so
+    switching between them must trip the pin check exactly like any other judge change.
+    """
+    if simulate:
+        return _judge_adapter(cfg, simulate=True).pin()
     rubric = cfg.judge.rubric
     if not rubric.exists():
         _die(
@@ -217,6 +265,148 @@ def _exit_code_for(verdict: str, cfg: BenchlockConfig) -> int:
     return EXIT_OK
 
 
+def _judge_adapter(
+    cfg: BenchlockConfig, *, simulate: bool = False, seed_offset: int = 0
+) -> JudgeAdapter:
+    """The judge to score with. Real providers land in Phase 6; `--simulate` needs no key.
+
+    `seed_offset` varies the simulated judge's noise between runs. Without it every
+    invocation rebuilds the same generator and replays the identical noise, which would
+    make the anchor stream perfectly stable — a simulation flattering itself rather than
+    exercising the thing being tested.
+    """
+    if simulate:
+        rubric = cfg.judge.rubric
+        return SimulatedJudge(
+            seed=cfg.anchor.seed + seed_offset,
+            scale=cfg.score_scale,
+            model=f"simulated::{cfg.judge.model}",
+            rubric_text=rubric.read_text(encoding="utf-8") if rubric.exists() else "rubric",
+        )
+    _die(
+        f"no judge adapter is wired for provider `{cfg.judge.provider.value}` yet",
+        "pass --simulate to use the deterministic built-in judge, which needs no API key",
+    )
+
+
+def _anchor_candidates(cfg: BenchlockConfig, path: Path | None) -> list[AnchorItem]:
+    """Load the pairs to freeze: an explicit file, or the existing frozen set."""
+    if path is not None:
+        if not path.exists():
+            _die(
+                f"anchor source not found at {path}",
+                'pass a JSONL of {"item_id", "prompt_input", "output", "tags"} objects',
+            )
+        items: list[AnchorItem] = []
+        for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            if not line.strip():
+                continue
+            try:
+                data = json.loads(line)
+            except json.JSONDecodeError as exc:
+                _die(f"{path}:{line_no}: not valid JSON: {exc.msg}", "one JSON object per line")
+            if "item_id" not in data:
+                _die(f"{path}:{line_no}: no `item_id`", "every anchor item needs a stable id")
+            items.append(
+                AnchorItem(
+                    item_id=str(data["item_id"]),
+                    prompt_input=str(data.get("prompt_input", "")),
+                    output=str(data.get("output", "")),
+                    tags=tuple(data.get("tags", ())),
+                    gold=data.get("gold"),
+                )
+            )
+        if not items:
+            _die(
+                f"{path} contains no anchor items", "the file should hold one JSON object per line"
+            )
+        return items
+    try:
+        return load_anchors()
+    except AnchorModeError as exc:
+        _die(exc.message, exc.hint)
+
+
+def _rescore_and_record(book: Ledger, cfg: BenchlockConfig, *, simulate: bool) -> None:
+    """Re-score the frozen anchor set for this run and append it as an anchor run.
+
+    This is what makes the control group a *control*: the same frozen outputs, judged
+    again, every run. Without it the anchor stream stops at the baseline and nothing can
+    tell you the judge moved.
+    """
+    from benchlock.anchor.modes import FrozenAnchor, rescore
+
+    _, anchor_pin = book.current_pins()
+    if anchor_pin is None:
+        _die(
+            "no anchor baseline has been frozen, so there is nothing to re-score",
+            "run `benchlock baseline` first",
+        )
+    try:
+        items = load_anchors()
+    except AnchorModeError as exc:
+        _die(exc.message, exc.hint)
+
+    existing_anchor_runs = len(book.runs(StreamKind.ANCHOR))
+    judge = _judge_adapter(cfg, simulate=simulate, seed_offset=existing_anchor_runs + 1)
+    nonce = new_run_id() if cfg.judge.cache_busting_nonce else ""
+    try:
+        scores = rescore(items, judge, nonce=nonce)
+    except AnchorModeError as exc:
+        _die(exc.message, exc.hint)
+
+    frozen = FrozenAnchor(
+        pin=anchor_pin,
+        baseline_scores={},
+        noise=None,  # type: ignore[arg-type]
+        judge_pin=_judge_pin(cfg, simulate=simulate),
+        mode=anchor_pin.mode,
+    )
+    _append_anchor_run(book, cfg, scores, frozen, run_index=existing_anchor_runs)
+    mean = sum(scores.values()) / len(scores)
+    typer.echo(f"  re-scored {len(scores)} anchor items: mean {mean:.4f}")
+
+
+def _append_anchor_run(
+    book: Ledger,
+    cfg: BenchlockConfig,
+    scores: Mapping[str, float],
+    frozen: object,
+    *,
+    run_index: int,
+) -> None:
+    """Record one anchor scoring as a run. Scores arrive already normalised to [0,1]."""
+    from benchlock.anchor.modes import FrozenAnchor
+
+    assert isinstance(frozen, FrozenAnchor)
+    lo, hi = cfg.score_scale
+    observations = tuple(
+        Observation(item_id=item, score=score, raw_score=lo + score * (hi - lo), scale=(lo, hi))
+        for item, score in sorted(scores.items())
+    )
+    book.append_run(
+        RunRecord(
+            run_id=new_run_id(),
+            run_index=run_index,
+            kind=StreamKind.ANCHOR,
+            observations=observations,
+            suite_hash=suite_hash_of(o.item_id for o in observations),
+            judge_pin=frozen.judge_pin,
+            anchor_pin=frozen.pin,
+            epoch=book.epoch(),
+        )
+    )
+
+
+def _observations_per_run(book: Ledger, cfg: BenchlockConfig) -> int:
+    """How many items a system run scores. Measured from the ledger where possible."""
+    if book.exists():
+        runs = book.runs(StreamKind.SYSTEM)
+        if runs:
+            return runs[-1].n
+    return cfg.min_obs
+
+
 def _todo(task: str, phase: str) -> NoReturn:
     """A subcommand whose backend lands in a later phase. Never silently no-ops."""
     _die(
@@ -303,6 +493,7 @@ def init(
 @app.command()
 def plan(
     config: ConfigOpt = None,
+    ledger: LedgerOpt = DEFAULT_LEDGER,
     target_shift: Annotated[
         float, typer.Option("--target-shift", help="Smallest judge shift you must attribute.")
     ] = 0.05,
@@ -311,16 +502,154 @@ def plan(
     ] = None,
 ) -> None:
     """Size the anchor set: how many items, how often, and what it will cost."""
-    _todo("plan", "Phase 3.6")
+    cfg = _load_config(config)
+    book = Ledger(ledger)
+    _, anchor_pin = book.current_pins() if book.exists() else (None, None)
+    if anchor_pin is None:
+        _die(
+            "no anchor baseline has been frozen, so there is no measured noise floor "
+            "to plan against",
+            "run `benchlock baseline` first — provisioning depends on how much your judge "
+            "disagrees with itself, which has to be measured rather than assumed",
+        )
+
+    runs = horizon if horizon is not None else cfg.stats.horizon
+    obs_per_run = _observations_per_run(book, cfg)
+    try:
+        plan_result = make_plan(
+            target_shift,
+            anchor_pin.noise_floor,
+            cfg.alpha,
+            runs,
+            obs_per_run,
+            cadence=cfg.anchor.cadence,
+        )
+    except ProvisioningImpossibleError as exc:
+        _die(exc.message, exc.hint)
+
+    judge = _judge_adapter(cfg, simulate=True)
+    per_run = estimate_cost_for(judge.describe(), plan_result.anchor_n)
+    baseline_cost = estimate_cost_for(
+        judge.describe(), plan_result.anchor_n * cfg.anchor.noise_replicates
+    )
+
+    typer.echo(
+        f"target shift      {target_shift:.3f}   (the smallest judge move you must attribute)"
+    )
+    typer.echo(f"horizon           {runs} runs")
+    typer.echo(f"alpha             {cfg.alpha}")
+    typer.echo("")
+    typer.secho(f"anchor n >= {plan_result.anchor_n}", bold=True)
+    typer.echo(f"cadence           every {plan_result.cadence} run(s)")
+    typer.echo(
+        f"achieved          min detectable judge shift "
+        f"{plan_result.achieved_min_detectable_shift:.4f}"
+    )
+    typer.echo(
+        f"dead zone         {plan_result.dead_zone:.4f}  "
+        f"(snapshot error at K={plan_result.replicates}; no shift smaller is ever detectable)"
+    )
+    typer.echo("")
+    typer.echo(
+        f"cost per run      {per_run.input_tokens + per_run.output_tokens:,} tokens, "
+        f"${per_run.dollars:.3f}"
+    )
+    typer.echo(
+        f"cost to baseline  {baseline_cost.input_tokens + baseline_cost.output_tokens:,} "
+        f"tokens, ${baseline_cost.dollars:.3f}  "
+        f"({cfg.anchor.noise_replicates} replicates)"
+    )
+    if plan_result.shared_noise_dominates:
+        typer.secho(
+            f"\n! quadrupling the anchor set would improve the detectable shift by only "
+            f"{plan_result.marginal_gain_at_4x:.0%}. Your judge's run-to-run movement is "
+            f"shared across items ({plan_result.shared_sd:.4f}), and that does not shrink "
+            "with more anchors. More replicates or a steadier judge will help; more items "
+            "will not",
+            fg=typer.colors.YELLOW,
+        )
+    if plan_result.anchor_n > cfg.anchor.n:
+        typer.secho(
+            f"\n! benchlock.yaml has anchor.n = {cfg.anchor.n}, below the {plan_result.anchor_n} "
+            "this target needs. Verdicts will come back `indeterminate` rather than `system`",
+            fg=typer.colors.YELLOW,
+        )
 
 
 @app.command()
 def baseline(
     config: ConfigOpt = None,
     ledger: LedgerOpt = DEFAULT_LEDGER,
+    anchors: Annotated[
+        Path | None,
+        typer.Option("--anchors", help="JSONL of anchor pairs to freeze."),
+    ] = None,
+    anchor_store: Annotated[
+        Path, typer.Option("--anchor-store", help="Where the frozen pairs are kept.")
+    ] = Path(".benchlock/anchors.jsonl"),
+    simulate: Annotated[
+        bool,
+        typer.Option("--simulate", help="Use the deterministic built-in judge (no API key)."),
+    ] = False,
 ) -> None:
     """Freeze the anchor set and measure the judge's noise floor."""
-    _todo("baseline", "Phase 3.1")
+    cfg = _load_config(config)
+    judge = _judge_adapter(cfg, simulate=simulate)
+    try:
+        check_mode_supported(cfg.anchor.mode, judge)
+    except AnchorModeError as exc:
+        _die(exc.message, exc.hint)
+
+    items = _anchor_candidates(cfg, anchors)
+    suite = [Candidate(item_id=i.item_id, score=0.5, tags=i.tags) for i in items]
+    if len(items) > cfg.anchor.n:
+        selection = select_anchors(
+            suite, cfg.anchor.n, seed=cfg.anchor.seed, kind=cfg.anchor.selection
+        )
+        keep = set(selection.chosen)
+        items = [i for i in items if i.item_id in keep]
+        typer.echo(
+            f"selected {len(items)} of {len(suite)} suite items "
+            f"({cfg.anchor.selection.value}, seed {cfg.anchor.seed})"
+        )
+
+    typer.echo(
+        f"scoring {len(items)} anchor items x {cfg.anchor.noise_replicates} replicates "
+        f"with {judge.describe().provider}/{judge.describe().model}..."
+    )
+    try:
+        frozen = freeze(items, judge, replicates=cfg.anchor.noise_replicates, mode=cfg.anchor.mode)
+    except AnchorModeError as exc:
+        _die(exc.message, exc.hint)
+
+    save_anchors(items, anchor_store)
+    book = Ledger(ledger)
+    book.append_baseline(
+        judge_pin=frozen.judge_pin,
+        anchor_pin=frozen.pin,
+        epoch=book.epoch(),
+        note=f"{cfg.anchor.mode.value} anchor set of {frozen.pin.n} items",
+    )
+    # The K replicates go in as the first K anchor runs, so the snapshot the verdict is
+    # measured against can be rebuilt from the ledger and re-derived by `replay`.
+    for index, scoring in enumerate(frozen.replicate_scorings):
+        _append_anchor_run(book, cfg, scoring, frozen, run_index=index)
+
+    coverage = measure_coverage(suite, [i.item_id for i in items])
+    typer.echo("")
+    typer.echo(f"anchor set frozen: {frozen.pin.n} items, mode {frozen.mode.value}")
+    typer.echo(f"  noise floor: per-item SD {frozen.noise.floor.per_item_sd:.4f}, ")
+    typer.echo(f"               run-mean SD {frozen.noise.floor.run_mean_sd:.5f}")
+    typer.echo(
+        f"  judge self-agreement: {frozen.noise.exact_agreement_rate:.1%} of identical calls "
+        f"returned an identical score"
+    )
+    typer.echo(f"  stored at {anchor_store} (eval content — keep it out of version control)")
+    for warning in (*frozen.warnings(), *coverage.warnings()):
+        typer.secho(f"  ! {warning}", fg=typer.colors.YELLOW)
+    typer.echo("")
+    typer.echo("next:")
+    typer.echo("  benchlock plan --target-shift 0.05    # check this anchor set is big enough")
 
 
 # ---------------------------------------------------------------------------------------
@@ -334,6 +663,16 @@ def observe(
     config: ConfigOpt = None,
     ledger: LedgerOpt = DEFAULT_LEDGER,
     kind: Annotated[str, typer.Option("--kind", help="system | anchor")] = "system",
+    rescore_anchors: Annotated[
+        bool,
+        typer.Option(
+            "--rescore-anchors",
+            help="Also re-score the frozen anchor set with the judge and record it.",
+        ),
+    ] = False,
+    simulate: Annotated[
+        bool, typer.Option("--simulate", help="Use the deterministic built-in judge.")
+    ] = False,
 ) -> None:
     """Ingest one run's scores and append them to the ledger."""
     cfg = _load_config(config)
@@ -356,7 +695,7 @@ def observe(
 
     # Hard Rule 8: compare the judge we are about to record against the one in force.
     pinned_judge, pinned_anchor = book.current_pins()
-    current_judge = _judge_pin(cfg)
+    current_judge = _judge_pin(cfg, simulate=simulate)
     if pinned_judge is not None:
         try:
             check_judge_pin(current_judge, pinned_judge)
@@ -419,6 +758,9 @@ def observe(
             f"recorded run {run.run_index} ({stream.value}): "
             f"{run.n} items, mean {run.mean:.4f} -> {ledger}"
         )
+
+        if rescore_anchors and stream is StreamKind.SYSTEM:
+            _rescore_and_record(book, cfg, simulate=simulate)
 
 
 @app.command()
@@ -489,7 +831,36 @@ def rebaseline(
     ledger: LedgerOpt = DEFAULT_LEDGER,
 ) -> None:
     """Start a new baseline epoch. Explicit, logged, versioned (Hard Rule 8)."""
-    _todo("rebaseline", "Phase 3.7")
+    cfg = _load_config(config)
+    book = Ledger(ledger)
+    if not book.exists():
+        _die(
+            f"no ledger at {ledger}",
+            "there is nothing to rebaseline; run `benchlock observe` first",
+        )
+    try:
+        pinned_judge, pinned_anchor = book.current_pins()
+    except LedgerError as exc:
+        _die(exc.message, exc.hint)
+
+    current_judge = _judge_pin(cfg)
+    delta = current_judge.differs_from(pinned_judge) if pinned_judge else ()
+    new_epoch = book.epoch() + 1
+    record = book.append_rebaseline(
+        reason=reason,
+        epoch=new_epoch,
+        judge_pin=current_judge,
+        anchor_pin=pinned_anchor,
+        pin_delta=delta,
+    )
+    log.info("rebaseline.recorded", epoch=new_epoch, reason=reason, seq=record.seq, delta=delta)
+    typer.echo(f"epoch {new_epoch} started: {reason}")
+    if delta:
+        typer.echo(f"  judge pin fields that moved: {', '.join(delta)}")
+    typer.echo(
+        "  history before this point is retained and replayable, and no verdict will "
+        "compare across the boundary"
+    )
 
 
 @app.command()

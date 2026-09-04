@@ -50,7 +50,7 @@ def test_every_command_has_help(command: str) -> None:
 
 #: Commands whose backends land in later phases. Shrinks as the build progresses; a
 #: command that disappears from here has been implemented, and its own suite covers it.
-NOT_YET = ["replay", "report", "plan", "baseline"]
+NOT_YET = ["replay", "report"]
 
 
 @pytest.mark.parametrize("command", NOT_YET)
