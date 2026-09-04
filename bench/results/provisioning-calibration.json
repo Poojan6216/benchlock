@@ -1,0 +1,64 @@
+{
+  "alpha": 0.05,
+  "safety_factor": 2.6,
+  "band_sds": 4.0,
+  "trials_per_case": 200,
+  "cases": [
+    {
+      "target_shift": 0.05,
+      "replicates": 5,
+      "horizon": 50,
+      "per_item_sd": 0.08,
+      "obs_per_run": 40,
+      "recommended_anchor_n": 40,
+      "detection_rate": 1.0
+    },
+    {
+      "target_shift": 0.03,
+      "replicates": 5,
+      "horizon": 50,
+      "per_item_sd": 0.08,
+      "obs_per_run": 40,
+      "recommended_anchor_n": 96,
+      "detection_rate": 1.0
+    },
+    {
+      "target_shift": 0.02,
+      "replicates": 5,
+      "horizon": 100,
+      "per_item_sd": 0.08,
+      "obs_per_run": 40,
+      "recommended_anchor_n": 107,
+      "detection_rate": 1.0
+    },
+    {
+      "target_shift": 0.05,
+      "replicates": 5,
+      "horizon": 30,
+      "per_item_sd": 0.12,
+      "obs_per_run": 40,
+      "recommended_anchor_n": 162,
+      "detection_rate": 1.0
+    },
+    {
+      "target_shift": 0.02,
+      "replicates": 8,
+      "horizon": 60,
+      "per_item_sd": 0.05,
+      "obs_per_run": 40,
+      "recommended_anchor_n": 47,
+      "detection_rate": 1.0
+    },
+    {
+      "target_shift": 0.03,
+      "replicates": 5,
+      "horizon": 40,
+      "per_item_sd": 0.08,
+      "obs_per_run": 200,
+      "recommended_anchor_n": 200,
+      "detection_rate": 1.0
+    }
+  ],
+  "note": "Detection rate at the anchor size `benchlock plan` recommends, for the shift it was asked to make detectable. The design law requires the anchor process to reach its threshold no later than the system process would, so anything below 95% here means the calculator is handing out sizes that produce confident, wrong SYSTEM verdicts.",
+  "command": "uv run pytest tests/test_power.py -m slow"
+}

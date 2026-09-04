@@ -138,11 +138,15 @@ class MonitorScale:
     half_width: float  # a deviation of this size reaches the edge of [0, 1]
 
     @classmethod
-    def from_noise_floor(cls, run_mean_sd: float, band_sds: float = 10.0) -> MonitorScale:
+    def from_noise_floor(cls, run_mean_sd: float, band_sds: float = 4.0) -> MonitorScale:
         """Band the stream at `band_sds` run-to-run standard deviations.
 
-        Ten is wide enough that ordinary noise never approaches the edge, and narrow
-        enough that a drift of a few noise units is a large move in scaled space.
+        The width is measured rather than assumed, because it directly controls power. Too
+        wide and the bets saturate their truncation, throwing most of the evidence away;
+        too narrow and ordinary noise clips against the boundary, destroying the signal's
+        shape. Four was the best of {2, 3, 4, 5, 6, 10} across four anchor/replicate/
+        horizon configurations, and 10 — the obvious "safely wide" choice — cost roughly a
+        third of the detectable-shift resolution.
         """
         if run_mean_sd <= 0.0:
             raise ValueError(
