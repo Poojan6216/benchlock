@@ -14,6 +14,7 @@ line of a CI job:
 from __future__ import annotations
 
 import sys
+from dataclasses import replace
 from pathlib import Path
 from typing import Annotated, NoReturn
 
@@ -25,7 +26,7 @@ from benchlock.adapters.jsonl import load as load_jsonl
 from benchlock.config import DEFAULT_CONFIG_NAME, BenchlockConfig, ConfigError, discover_config_path
 from benchlock.jsonlog import Level, log
 from benchlock.ledger.log import Ledger, LedgerError, new_run_id
-from benchlock.model.pins import JudgePin
+from benchlock.model.pins import JudgePin, PinViolationError, check_anchor_pin, check_judge_pin
 from benchlock.model.streams import RunRecord, StreamKind, suite_hash_of
 
 EXIT_OK = 0
@@ -194,6 +195,15 @@ def observe(
             "run `benchlock baseline` to freeze the anchor set and measure the noise floor",
         )
 
+    # Hard Rule 8: compare the judge we are about to record against the one in force.
+    pinned_judge, pinned_anchor = book.current_pins()
+    current_judge = _judge_pin(cfg)
+    if pinned_judge is not None:
+        try:
+            check_judge_pin(current_judge, pinned_judge)
+        except PinViolationError as exc:
+            _die(exc.message, exc.hint)
+
     for appended, path in enumerate(results):
         try:
             observations = load_jsonl(path, cfg.score_scale)
@@ -208,14 +218,29 @@ def observe(
                 "small to be informative is refused rather than silently monitored",
             )
 
+        run_anchor_pin = None
+        if stream is StreamKind.ANCHOR and pinned_anchor is not None:
+            # The anchor set is frozen: a run that scores a different set of items is not
+            # a measurement of the same control group (Hard Rule 8).
+            observed = replace(
+                pinned_anchor,
+                item_set_hash=suite_hash_of(o.item_id for o in observations),
+                n=len(observations),
+            )
+            try:
+                check_anchor_pin(observed, pinned_anchor)
+            except PinViolationError as exc:
+                _die(exc.message, exc.hint)
+            run_anchor_pin = pinned_anchor
+
         run = RunRecord(
             run_id=new_run_id(),
             run_index=len(existing) + appended,
             kind=stream,
             observations=observations,
             suite_hash=suite_hash_of(o.item_id for o in observations),
-            judge_pin=_judge_pin(cfg),
-            anchor_pin=None,
+            judge_pin=current_judge,
+            anchor_pin=run_anchor_pin,
             epoch=book.epoch(),
         )
         try:

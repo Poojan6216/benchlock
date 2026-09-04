@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
@@ -185,3 +185,104 @@ def baseline_scores_hash(scores: Mapping[str, float]) -> str:
     reproducible; 9 decimal places is far finer than any judge's resolution.
     """
     return sha256_json({k: round(float(v), 9) for k, v in sorted(scores.items())})
+
+
+# ---------------------------------------------------------------------------------------
+# Violation detection (Hard Rule 8)
+# ---------------------------------------------------------------------------------------
+
+#: What each pin field means to someone reading an error at 2am.
+_FIELD_MEANING: dict[str, str] = {
+    "provider": "the judge provider changed",
+    "model": "the judge model snapshot changed",
+    "rubric_hash": (
+        "the rubric text changed — including whitespace, because whitespace changes prompts"
+    ),
+    "params_hash": "the judge sampling parameters changed (temperature, top_p, max_tokens, seed)",
+    "scale": "the declared score scale changed",
+    "mode": "the anchor mode changed",
+    "item_set_hash": "the anchor item set changed",
+    "baseline_scores_hash": "the frozen baseline anchor scores changed",
+    "n": "the anchor set size changed",
+}
+
+
+class PinViolationError(Exception):
+    """A pinned value moved without a logged rebaseline.
+
+    This is an error, not a warning (Hard Rule 8). Comparing scores across a judge or
+    anchor change is comparing two different measurements and calling the difference a
+    result.
+    """
+
+    def __init__(
+        self,
+        which: str,
+        changed: Sequence[str],
+        detail: Sequence[str] = (),
+        *,
+        rebaseline_reason: str = "",
+    ) -> None:
+        self.which = which
+        self.changed = tuple(changed)
+        self.detail = tuple(detail)
+        reason = rebaseline_reason or (
+            "judge-version-change" if which == "judge" else "anchor-set-change"
+        )
+        self.message = (
+            f"{which} pin changed without a rebaseline: {', '.join(self.changed)}\n"
+            + "\n".join(f"  - {d}" for d in self.detail)
+        )
+        self.hint = (
+            "scores before and after this change are not comparable. If the change was "
+            f"intentional, record it:\n    benchlock rebaseline --reason {reason}"
+        )
+        super().__init__(f"{self.message}\n  fix: {self.hint}")
+
+
+def _fmt(value: object) -> str:
+    """Show plaintext in full; abbreviate hex digests.
+
+    The dated suffix of a model snapshot is the whole point of the message, so plaintext
+    is never truncated. A 64-char SHA-256 carries no information past its prefix.
+    """
+    text = str(value)
+    is_digest = len(text) == 64 and all(c in "0123456789abcdef" for c in text)
+    return f"{text[:12]}…" if is_digest else text
+
+
+def check_judge_pin(current: JudgePin, pinned: JudgePin) -> None:
+    """Raise if the judge moved. No-op when the pins are identical."""
+    changed = current.differs_from(pinned)
+    if not changed:
+        return
+    detail = [
+        f"{_FIELD_MEANING[field]}: {_fmt(getattr(pinned, field))} -> "
+        f"{_fmt(getattr(current, field))}"
+        for field in changed
+    ]
+    raise PinViolationError("judge", changed, detail)
+
+
+def check_anchor_pin(current: AnchorPin, pinned: AnchorPin) -> None:
+    """Raise if the anchor set moved. Distinguishes membership from baseline edits."""
+    changed = current.differs_from(pinned)
+    if not changed:
+        return
+    detail: list[str] = []
+    if "n" in changed:
+        detail.append(f"the anchor set size changed: {pinned.n} -> {current.n} items")
+    if "item_set_hash" in changed and "n" not in changed:
+        detail.append(
+            f"anchor membership changed with the same size ({current.n} items): "
+            "an item was swapped, not added or removed"
+        )
+    elif "item_set_hash" in changed:
+        detail.append("the anchor item set changed: items were added or removed")
+    if "baseline_scores_hash" in changed and "item_set_hash" not in changed:
+        detail.append("the frozen baseline scores were edited while the item set stayed the same")
+    elif "baseline_scores_hash" in changed:
+        detail.append("the frozen baseline scores changed, as they must when membership does")
+    if "mode" in changed:
+        detail.append(f"the anchor mode changed: {pinned.mode.value} -> {current.mode.value}")
+    raise PinViolationError("anchor", changed, detail)

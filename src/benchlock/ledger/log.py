@@ -392,6 +392,32 @@ class Ledger:
             )
         return out
 
+    def current_pins(self) -> tuple[JudgePin | None, AnchorPin | None]:
+        """The pins in force right now: from the latest baseline/rebaseline record if one
+        exists, otherwise from the earliest run of the current epoch.
+
+        The fallback matters for the simplest possible workflow — a user who only ever
+        runs `observe`. The first run they record establishes the reference, and a later
+        run under a different judge is then an error rather than a silent comparison.
+        """
+        records = self.verify()
+        epoch = sum(1 for r in records if r.type is RecordType.REBASELINE)
+        for record in reversed(records):
+            if record.type in (RecordType.BASELINE, RecordType.REBASELINE):
+                anchor = record.payload.get("anchor_pin")
+                return (
+                    JudgePin.from_json(record.payload["judge_pin"]),
+                    AnchorPin.from_json(anchor) if anchor else None,
+                )
+        for record in records:
+            if record.type is RecordType.RUN and int(record.payload.get("epoch", 0)) == epoch:
+                anchor = record.payload.get("anchor_pin")
+                return (
+                    JudgePin.from_json(record.payload["judge_pin"]),
+                    AnchorPin.from_json(anchor) if anchor else None,
+                )
+        return None, None
+
     def epoch(self) -> int:
         """The current baseline epoch: number of rebaselines so far."""
         return sum(1 for r in self.read_raw() if r.type is RecordType.REBASELINE)
