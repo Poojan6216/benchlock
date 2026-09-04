@@ -1,0 +1,13 @@
+{
+  "streams": 2000,
+  "horizon": 300,
+  "baseline_runs": 12,
+  "obs_per_run": 40,
+  "alpha": 0.05,
+  "composite_null_false_alarm_rate": 0.0,
+  "point_estimate_false_alarm_rate": 0.5025,
+  "composite_within_alpha": true,
+  "point_estimate_over_alpha_factor": 10.05,
+  "note": "Both processes monitor the same drift-free streams and are inspected at every one of the 300 runs. The point-estimate version is the natural first implementation: take the baseline sample mean and monitor against it. It is invalid, and this is the size of the error.",
+  "command": "uv run pytest tests/test_eprocess.py -m slow"
+}
