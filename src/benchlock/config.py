@@ -379,6 +379,38 @@ class BenchlockConfig(_Base):
         return yaml.safe_dump(data, sort_keys=False, default_flow_style=False)
 
 
+@dataclass(frozen=True, slots=True)
+class AttributionConfig:
+    """The pure subset of the config that `decide()` consumes.
+
+    Deliberately a plain frozen dataclass rather than the Pydantic model: `decide()` must
+    be a pure function of ``(system, anchor, config)``, and this type carries only values —
+    no paths, no adapters, nothing that could tempt an implementation into touching the
+    filesystem. Hard Rule 7 depends on it.
+    """
+
+    alpha: float = 0.05
+    min_runs: int = 8
+    min_obs: int = 30
+    max_candidates: int = 256
+    baseline_runs: int = 8
+    #: The judge shift the anchor set was provisioned to catch; sets the monitoring band.
+    target_shift: float = 0.05
+    horizon: int = 50
+
+    @classmethod
+    def from_config(cls, cfg: BenchlockConfig, *, target_shift: float = 0.05) -> AttributionConfig:
+        return cls(
+            alpha=cfg.alpha,
+            min_runs=cfg.min_runs,
+            min_obs=cfg.min_obs,
+            max_candidates=cfg.stats.max_candidates,
+            baseline_runs=cfg.stats.baseline_runs,
+            target_shift=target_shift,
+            horizon=cfg.stats.horizon,
+        )
+
+
 def discover_config_path(start: Path | None = None) -> Path | None:
     """`./benchlock.yaml`, then `$XDG_CONFIG_HOME/benchlock/config.yaml` (§5)."""
     for candidate in _candidate_config_paths(start):
