@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
@@ -61,3 +61,127 @@ class NoiseFloor:
             raise ValueError("a noise floor needs at least K=2 replicates to be estimable")
         if self.n_items < 1:
             raise ValueError("a noise floor needs at least one item")
+
+
+@dataclass(frozen=True, slots=True)
+class JudgePin:
+    """Everything about the judge that, if changed, invalidates comparison.
+
+    Hard Rule 8: a change here without an explicit rebaseline is an ERROR.
+    """
+
+    provider: str
+    model: str  # the exact dated snapshot where the provider offers one
+    rubric_hash: str  # SHA-256 of the full rubric/system prompt
+    params_hash: str  # temperature, top_p, max_tokens, response format, seed
+    scale: tuple[float, float]
+
+    def differs_from(self, other: JudgePin) -> tuple[str, ...]:
+        """Names of the fields that changed, for the verdict message. Empty if identical."""
+        changed = [
+            name
+            for name in ("provider", "model", "rubric_hash", "params_hash", "scale")
+            if getattr(self, name) != getattr(other, name)
+        ]
+        return tuple(changed)
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "provider": self.provider,
+            "model": self.model,
+            "rubric_hash": self.rubric_hash,
+            "params_hash": self.params_hash,
+            "scale": [self.scale[0], self.scale[1]],
+        }
+
+    @classmethod
+    def from_json(cls, data: dict[str, Any]) -> JudgePin:
+        scale = data["scale"]
+        return cls(
+            provider=str(data["provider"]),
+            model=str(data["model"]),
+            rubric_hash=str(data["rubric_hash"]),
+            params_hash=str(data["params_hash"]),
+            scale=(float(scale[0]), float(scale[1])),
+        )
+
+    @classmethod
+    def build(
+        cls,
+        *,
+        provider: str,
+        model: str,
+        rubric_text: str,
+        params: dict[str, Any],
+        scale: tuple[float, float],
+    ) -> JudgePin:
+        """Hash the rubric text and params into a pin.
+
+        The rubric is hashed byte-exactly: a whitespace-only edit changes the prompt,
+        so it must change the pin (Phase 0.5 verify case 2).
+        """
+        return cls(
+            provider=provider,
+            model=model,
+            rubric_hash=sha256_text(rubric_text),
+            params_hash=sha256_json(params),
+            scale=scale,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class AnchorPin:
+    """The frozen control set. Any change to its membership or baseline invalidates it."""
+
+    mode: AnchorMode
+    item_set_hash: str  # SHA-256 of sorted anchor item_ids
+    baseline_scores_hash: str
+    n: int
+    noise_floor: NoiseFloor
+
+    def differs_from(self, other: AnchorPin) -> tuple[str, ...]:
+        changed = [
+            name
+            for name in ("mode", "item_set_hash", "baseline_scores_hash", "n")
+            if getattr(self, name) != getattr(other, name)
+        ]
+        return tuple(changed)
+
+    def to_json(self) -> dict[str, Any]:
+        return {
+            "mode": self.mode.value,
+            "item_set_hash": self.item_set_hash,
+            "baseline_scores_hash": self.baseline_scores_hash,
+            "n": self.n,
+            "noise_floor": {
+                "per_item_sd": self.noise_floor.per_item_sd,
+                "run_mean_sd": self.noise_floor.run_mean_sd,
+                "replicates": self.noise_floor.replicates,
+                "n_items": self.noise_floor.n_items,
+            },
+        }
+
+    @classmethod
+    def from_json(cls, data: dict[str, Any]) -> AnchorPin:
+        nf = data["noise_floor"]
+        return cls(
+            mode=AnchorMode(data["mode"]),
+            item_set_hash=str(data["item_set_hash"]),
+            baseline_scores_hash=str(data["baseline_scores_hash"]),
+            n=int(data["n"]),
+            noise_floor=NoiseFloor(
+                per_item_sd=float(nf["per_item_sd"]),
+                run_mean_sd=float(nf["run_mean_sd"]),
+                replicates=int(nf["replicates"]),
+                n_items=int(nf["n_items"]),
+            ),
+        )
+
+
+def baseline_scores_hash(scores: Mapping[str, float]) -> str:
+    """Hash of the frozen baseline scores, rounded to a stable precision.
+
+    Rounded because float formatting differs across platforms and the pin must be
+    reproducible; 9 decimal places is far finer than any judge's resolution.
+    """
+    return sha256_json({k: round(float(v), 9) for k, v in sorted(scores.items())})

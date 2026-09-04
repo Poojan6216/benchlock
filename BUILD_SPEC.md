@@ -500,7 +500,7 @@ gate:
   `config.py` with the §7 Pydantic models, schema version, and clear line-numbered errors on invalid YAML. `cli.py` with all nine subcommands present (stubs beyond `init` and `observe`). Structured JSON logs to stderr.
   **Verify:** 12+ malformed configs each produce a specific, actionable error naming the field and line. Round-trip load → dump → load is stable.
 
-- [ ] **0.3 — The universal JSONL adapter**
+- [x] **0.3 — The universal JSONL adapter**
   `adapters/jsonl.py`. The lowest-common-denominator ingest: a JSONL file of `{item_id, score}` plus run metadata. Every other adapter normalises into this. Score normalisation to `[0,1]` using the declared `score_scale`, with the raw value and scale retained. Reject undeclared or out-of-range scores loudly (Hard Rule 10).
   **Verify:** table-driven tests over binary scores, 1–5 Likert, 1–10, continuous [0,1], and four malformed cases each rejected with a specific message.
 
@@ -892,6 +892,7 @@ Phase 5 and Phase 7 are the ones that make anyone care. If the schedule slips, c
 ```
 [0.1] Scaffold: uv/hatchling pyproject (py3.12+), ruff line-100, mypy --strict, pytest+hypothesis, Apache-2.0, pre-commit. Decision: confseq oracle needs Boost headers so it lives in its own 'oracle' dependency group (brew install boost); CI installs it so the 1.3 differential test always runs. confseq 0.0.11 predates NumPy 2 (np.float_) — tests apply a one-line shim rather than pinning numpy<2.
 [0.2] Config + CLI skeleton: Pydantic v2 models (extra=forbid everywhere so typos are errors), schema version 1, YAML composed to a node tree for path->line mapping so every validation error prints file:line, field path and a fix hint. 21 malformed configs tested + 6 exact-line assertions. Nine subcommands present; unimplemented ones exit 3 naming the phase they arrive in, never a silent no-op. Structured JSON logs to stderr (stdout stays clean for piping). Decision: NoiseFloor + AnchorMode live in model/pins.py so model/ has no internal deps; anchor/noisefloor.py is the estimator that produces one.
+[0.3] Universal JSONL adapter + model/streams.py (Observation, RunRecord, StreamKind) and full JudgePin/AnchorPin. Normalises to [0,1] from the declared score_scale, retaining raw value + scale so it is reversible; out-of-range scores RAISE and are never clamped (clamping would compress real movement into the bound and make a drifting stream look stable). Collects every problem in a file before raising, each naming file:line and a fix. 6 score types x 12 malformed cases tested. Decision: accepts a few well-known aliases (id/test_id/case_id, value) for convenience, but two aliases with conflicting values is an error rather than a guess.
 ```
 
 ---
