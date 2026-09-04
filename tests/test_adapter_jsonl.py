@@ -48,7 +48,9 @@ def test_score_types_normalise_to_unit_interval(
 
 
 def test_booleans_are_accepted_as_a_binary_rubric(tmp_path: Path) -> None:
-    path = write_jsonl(tmp_path, [{"item_id": "a", "score": True}, {"item_id": "b", "score": False}])
+    path = write_jsonl(
+        tmp_path, [{"item_id": "a", "score": True}, {"item_id": "b", "score": False}]
+    )
     assert [o.score for o in load(path, (0.0, 1.0))] == [1.0, 0.0]
 
 
@@ -67,7 +69,8 @@ def test_explicit_field_names_override_aliases(tmp_path: Path) -> None:
 
 def test_blank_lines_and_comments_are_skipped(tmp_path: Path) -> None:
     path = write_jsonl(
-        tmp_path, ['{"item_id": "a", "score": 1}', "", "// a comment", '{"item_id": "b", "score": 5}']
+        tmp_path,
+        ['{"item_id": "a", "score": 1}', "", "// a comment", '{"item_id": "b", "score": 5}'],
     )
     assert len(load(path, (1.0, 5.0))) == 2
 

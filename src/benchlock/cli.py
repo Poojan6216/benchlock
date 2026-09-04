@@ -20,8 +20,13 @@ from typing import Annotated, NoReturn
 import typer
 
 from benchlock import __version__
+from benchlock.adapters.jsonl import IngestError
+from benchlock.adapters.jsonl import load as load_jsonl
 from benchlock.config import DEFAULT_CONFIG_NAME, BenchlockConfig, ConfigError, discover_config_path
 from benchlock.jsonlog import Level, log
+from benchlock.ledger.log import Ledger, LedgerError, new_run_id
+from benchlock.model.pins import JudgePin
+from benchlock.model.streams import RunRecord, StreamKind, suite_hash_of
 
 EXIT_OK = 0
 EXIT_FAIL = 1
@@ -75,6 +80,24 @@ def _load_config(path: Path | None) -> BenchlockConfig:
         raise typer.Exit(EXIT_ERROR) from exc
     log.debug("config.loaded", path=str(resolved), alpha=cfg.alpha)
     return cfg
+
+
+def _judge_pin(cfg: BenchlockConfig) -> JudgePin:
+    """Hash the judge configuration. The rubric must be readable: it is part of the pin."""
+    rubric = cfg.judge.rubric
+    if not rubric.exists():
+        _die(
+            f"judge rubric not found at {rubric}",
+            "point `judge.rubric` in benchlock.yaml at the rubric/system prompt your judge "
+            "uses; its exact text is hashed into the judge pin",
+        )
+    return JudgePin.build(
+        provider=cfg.judge.provider.value,
+        model=cfg.judge.model,
+        rubric_text=rubric.read_text(encoding="utf-8"),
+        params=cfg.judge.params.model_dump(mode="json", exclude_none=True),
+        scale=cfg.score_scale,
+    )
 
 
 def _todo(task: str, phase: str) -> NoReturn:
@@ -153,7 +176,65 @@ def observe(
     kind: Annotated[str, typer.Option("--kind", help="system | anchor")] = "system",
 ) -> None:
     """Ingest one run's scores and append them to the ledger."""
-    _todo("observe", "Phase 0.4")
+    cfg = _load_config(config)
+    try:
+        stream = StreamKind(kind)
+    except ValueError:
+        _die(f"unknown --kind {kind!r}", "use `--kind system` or `--kind anchor`")
+
+    book = Ledger(ledger)
+    try:
+        existing = book.runs(stream)
+    except LedgerError as exc:
+        _die(exc.message, exc.hint or "restore the ledger from version control")
+
+    if stream is StreamKind.ANCHOR and not any(r.type.value == "baseline" for r in book.read_raw()):
+        _die(
+            "no anchor baseline has been frozen yet",
+            "run `benchlock baseline` to freeze the anchor set and measure the noise floor",
+        )
+
+    for appended, path in enumerate(results):
+        try:
+            observations = load_jsonl(path, cfg.score_scale)
+        except IngestError as exc:
+            typer.secho(exc.render(), fg=typer.colors.RED, err=True)
+            raise typer.Exit(EXIT_ERROR) from exc
+
+        if len(observations) < cfg.min_obs:
+            _die(
+                f"{path} has {len(observations)} observations, below min_obs={cfg.min_obs}",
+                "either lower `min_obs` in benchlock.yaml or score more items; a run too "
+                "small to be informative is refused rather than silently monitored",
+            )
+
+        run = RunRecord(
+            run_id=new_run_id(),
+            run_index=len(existing) + appended,
+            kind=stream,
+            observations=observations,
+            suite_hash=suite_hash_of(o.item_id for o in observations),
+            judge_pin=_judge_pin(cfg),
+            anchor_pin=None,
+            epoch=book.epoch(),
+        )
+        try:
+            record = book.append_run(run)
+        except LedgerError as exc:
+            _die(exc.message, exc.hint)
+        log.info(
+            "observe.appended",
+            path=str(path),
+            kind=stream.value,
+            run_index=run.run_index,
+            n=run.n,
+            mean=round(run.mean, 6),
+            seq=record.seq,
+        )
+        typer.echo(
+            f"recorded run {run.run_index} ({stream.value}): "
+            f"{run.n} items, mean {run.mean:.4f} -> {ledger}"
+        )
 
 
 @app.command()
