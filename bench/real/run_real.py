@@ -56,6 +56,16 @@ def judge_nondeterminism(pool: dict) -> dict:
                 agreements += int(diff == 0.0)
     run_means = [float(np.mean([s[i] for i in items])) for s in replicate_scorings]
     baseline = next(c for c in pool["configs"] if c["key"] == "a-baseline")
+
+    # How much of the run-to-run movement is SHARED across items rather than independent?
+    # Independent per-item noise would give run_mean_sd = per_item_sd / sqrt(n). Anything
+    # above that is a run-level offset moving every item together — the component that no
+    # anchor size can buy down (see stats/power.py::decompose).
+    per_item_sd = float(np.mean(per_item_sds))
+    run_mean_sd = float(np.std(run_means, ddof=1))
+    predicted = per_item_sd / np.sqrt(len(items)) if items else 0.0
+    unstable = sum(1 for i in items if len({s[i] for s in replicate_scorings}) > 1)
+
     return {
         "command": "uv run python bench/real/run_real.py --all",
         "replicates": len(replicate_scorings),
@@ -67,11 +77,24 @@ def judge_nondeterminism(pool: dict) -> dict:
                 "rubric": "base 1-5 helpfulness",
                 "score_type": "likert5",
                 "exact_agreement_rate": agreements / comparisons if comparisons else 0.0,
+                "self_disagreement_rate": 1.0 - (agreements / comparisons if comparisons else 0.0),
                 "mean_abs_pairwise_diff": float(np.mean(pairwise)) if pairwise else 0.0,
-                "per_item_sd": float(np.mean(per_item_sds)),
-                "run_mean_sd": float(np.std(run_means, ddof=1)),
+                "per_item_sd": per_item_sd,
+                "run_mean_sd": run_mean_sd,
+                "items_that_ever_varied": unstable,
+                "items_that_ever_varied_rate": unstable / len(items) if items else 0.0,
+                "pairwise_comparisons": comparisons,
+                # >1 means the judge's noise is correlated across items, so a bigger anchor
+                # set buys less than 1/sqrt(n) would suggest.
+                "independence_ratio": (run_mean_sd / predicted) if predicted > 0 else None,
+                "run_means": [round(m, 5) for m in run_means],
             }
         ],
+        "note": (
+            "Measured from K identical calls per item, each with a per-call cache-busting "
+            "nonce so the provider cannot serve a cached answer. Every number here is a "
+            "property of a real hosted judge at its most deterministic setting."
+        ),
     }
 
 

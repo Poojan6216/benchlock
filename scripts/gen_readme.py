@@ -263,6 +263,13 @@ verdict, which together are the difference between a guarantee and a decoration.
 - **A judge that got noisier without changing its mean is not reported as a judge change.**
   The reasoning is in [docs/threat-model.md](docs/threat-model.md); a dedicated
   variance-change warning is not implemented.
+- **Benchlock does not watch the judge's *refusal* rate**, only its scores. Measured
+  against a real judge, editing the rubric alone raised the refusal rate 6.7x — and a
+  refused item vanishes silently from the sample, so a score-only tool cannot see it.
+  See [RESULTS.md](RESULTS.md).
+- **A judge configuration change that moves refusals but not scores is invisible.** Raising
+  the judge's reasoning effort tripled its refusal rate while barely moving the mean score,
+  and Benchlock returned `stable` — one of six real-judge scenarios it gets wrong.
 - **Single judge, single suite, single system.** Ensembles and portfolios are v2.
 
 ---

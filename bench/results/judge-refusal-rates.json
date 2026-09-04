@@ -1,0 +1,74 @@
+{
+ "command": "uv run python bench/real/build_pool.py --items 400 --anchor-items 200 --replicates 5",
+ "source_log": "bench/results/real-pool-run.log",
+ "dataset": "nvidia/HelpSteer2 (CC-BY-4.0), 400 items stratified by human helpfulness",
+ "finding": "A judge's willingness to score at all is itself a form of drift. Same model, same items: editing only the rubric text raised the refusal rate 6.7x, and raising only the reasoning effort raised it 3x. Refused items vanish silently from the sample, so any tool that looks only at the scores it does get back cannot see this.",
+ "per_config": [
+  {
+   "config": "a-baseline",
+   "refused": 9,
+   "requested": 400,
+   "refusal_rate": 0.0225,
+   "configuration": "claude-sonnet-5, base rubric, effort low",
+   "vs_baseline_multiple": 1.0
+  },
+  {
+   "config": "b-other-snapshot",
+   "refused": 5,
+   "requested": 400,
+   "refusal_rate": 0.0125,
+   "configuration": "claude-haiku-4-5, base rubric",
+   "vs_baseline_multiple": 0.56
+  },
+  {
+   "config": "c-strict-rubric",
+   "refused": 60,
+   "requested": 400,
+   "refusal_rate": 0.15,
+   "configuration": "claude-sonnet-5, STRICT rubric, effort low",
+   "vs_baseline_multiple": 6.67
+  },
+  {
+   "config": "d-effort",
+   "refused": 27,
+   "requested": 400,
+   "refusal_rate": 0.0675,
+   "configuration": "claude-sonnet-5, base rubric, effort HIGH",
+   "vs_baseline_multiple": 3.0
+  }
+ ],
+ "replicates_same_config": {
+  "note": "Five identical repeated scorings of the same 200 anchor items under the baseline configuration. The refusal boundary is not deterministic.",
+  "runs": [
+   {
+    "failed": 9,
+    "total": 200,
+    "rate": 0.045
+   },
+   {
+    "failed": 8,
+    "total": 200,
+    "rate": 0.04
+   },
+   {
+    "failed": 7,
+    "total": 200,
+    "rate": 0.035
+   },
+   {
+    "failed": 10,
+    "total": 200,
+    "rate": 0.05
+   },
+   {
+    "failed": 9,
+    "total": 200,
+    "rate": 0.045
+   }
+  ],
+  "min_refused": 7,
+  "max_refused": 10
+ },
+ "all_refusals_were_safety_declines": true,
+ "api_errors": 0
+}

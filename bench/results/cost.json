@@ -1,6 +1,9 @@
 {
  "command": "uv run python bench/real/build_pool.py",
- "total_calls": 3000,
- "total_dollars": 0.0,
- "note": "estimated from published per-token prices and observed token counts"
+ "total_calls": 2456,
+ "total_dollars": 3.0495,
+ "input_tokens": 1572871,
+ "output_tokens": 12337,
+ "failed_calls": 144,
+ "note": "measured from the token counts the API actually reported, priced at published per-token rates \u2014 not a pre-run estimate"
 }

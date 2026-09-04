@@ -140,18 +140,27 @@ unless you add a cache-busting nonce
 
 ---
 
-## What is not measured
+## Two things I did not expect to find
 
-**No hosted judge was ever called.** The build environment had no API key, so the Tier 2
-study is a complete, exercised pipeline with no real-judge numbers attached. Two things are
-therefore unknown:
+**A temperature-0 judge disagrees with itself 18.9% of the time.** Five identical calls per
+item, cache-busting nonce so nothing was served from a cache: 36% of items came back with a
+different score at least once. The run mean wobbles by 0.0074 between identical runs. That
+is the noise floor, it is not zero, and it will move your dashboard on its own.
 
-1. How much a temperature-0 hosted judge disagrees with **itself** across identical calls.
-2. Whether a cache-busting nonce perturbs a real judge's scores — a mitigation that is
-   itself a confound is not a mitigation.
+More interesting: that wobble is **2.06x larger** than independent per-item noise predicts.
+The judge shifts every item together — which means a bigger anchor set buys *less* than
+`1/sqrt(n)` of precision. The provisioning calculator models that as a `shared_sd` term; I
+put it in on theoretical grounds and the real judge confirmed it.
 
-Both are listed as unmeasured rather than filled in from simulation. That distinction is
-the entire point of the project.
+**And a judge's willingness to score at all is a form of drift nobody watches.** Editing
+only the rubric text — same model, same items — raised the refusal rate from 2.3% to 15.0%.
+Raising only the reasoning effort tripled it. Five identical repeats of the same 200 items
+declined between 7 and 10 of them, so the refusal boundary is not even deterministic.
+
+That last one is a hole in this tool. Benchlock watches scores; a refused item silently
+leaves the sample. On the one real-judge scenario Benchlock gets wrong — the effort change —
+the configuration moved refusals without moving scores, and the verdict came back `stable`.
+Five of six correct is the honest number, and the sixth is in the results table.
 
 ---
 

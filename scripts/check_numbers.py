@@ -66,7 +66,9 @@ def measured_values() -> set[str]:
         elif isinstance(node, (int, float)):
             found.add(f"{node}")
             found.add(f"{node:g}")
-            for places in range(5):
+            # Small quantities (noise floors, SDs) are rendered to more places than
+            # ordinary rates, so cover the range a document might legitimately use.
+            for places in range(7):
                 found.add(f"{node:.{places}f}")
             if isinstance(node, float) and 0.0 <= node <= 1.0:
                 # Percentages, as rendered in prose and tables.

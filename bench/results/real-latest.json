@@ -1,6 +1,6 @@
 {
  "command": "uv run python bench/real/run_real.py --all",
- "elapsed_seconds": 11.4,
+ "elapsed_seconds": 36.5,
  "methodology": "Tier 2 streams are **constructed by resampling pooled real judge scores**, not observed longitudinally. A fixed item pool was scored once under each of five judge configurations; the time axis is built by splicing those pools at known change points. That is what makes real judges affordable at this sample size, and it is a real limitation: simulation supplies the statistical power, real judges supply the premise, and neither is a longitudinal production study. We have not run one.",
  "rows": [
   {
@@ -11,7 +11,7 @@
    "scenario": "judge-version-bump",
    "single_stream": true,
    "truth": "judge",
-   "verdict": "regression"
+   "verdict": "stable"
   },
   {
    "accuracy": 0.0,
@@ -166,7 +166,7 @@
   {
    "accuracy": 0.0,
    "correct": false,
-   "description": "temperature moved from 0 to 1",
+   "description": "the judge's reasoning effort was raised from low to high",
    "method": "B0-fixed-threshold",
    "scenario": "judge-parameter-change",
    "single_stream": true,
@@ -176,17 +176,17 @@
   {
    "accuracy": 0.0,
    "correct": false,
-   "description": "temperature moved from 0 to 1",
+   "description": "the judge's reasoning effort was raised from low to high",
    "method": "B1-peeking-t-test",
    "scenario": "judge-parameter-change",
    "single_stream": true,
    "truth": "judge",
-   "verdict": "regression"
+   "verdict": "stable"
   },
   {
    "accuracy": 0.0,
    "correct": false,
-   "description": "temperature moved from 0 to 1",
+   "description": "the judge's reasoning effort was raised from low to high",
    "method": "B2-bonferroni-t-test",
    "scenario": "judge-parameter-change",
    "single_stream": true,
@@ -196,7 +196,7 @@
   {
    "accuracy": 0.0,
    "correct": false,
-   "description": "temperature moved from 0 to 1",
+   "description": "the judge's reasoning effort was raised from low to high",
    "method": "B3-cusum",
    "scenario": "judge-parameter-change",
    "single_stream": true,
@@ -206,7 +206,7 @@
   {
    "accuracy": 0.0,
    "correct": false,
-   "description": "temperature moved from 0 to 1",
+   "description": "the judge's reasoning effort was raised from low to high",
    "method": "B4-adwin",
    "scenario": "judge-parameter-change",
    "single_stream": true,
@@ -216,7 +216,7 @@
   {
    "accuracy": 0.0,
    "correct": false,
-   "description": "temperature moved from 0 to 1",
+   "description": "the judge's reasoning effort was raised from low to high",
    "method": "B4-ddm",
    "scenario": "judge-parameter-change",
    "single_stream": true,
@@ -226,7 +226,7 @@
   {
    "accuracy": 0.0,
    "correct": false,
-   "description": "temperature moved from 0 to 1",
+   "description": "the judge's reasoning effort was raised from low to high",
    "method": "B5-benchlock-no-anchor",
    "scenario": "judge-parameter-change",
    "single_stream": true,
@@ -236,7 +236,7 @@
   {
    "accuracy": 0.0,
    "correct": false,
-   "description": "temperature moved from 0 to 1",
+   "description": "the judge's reasoning effort was raised from low to high",
    "method": "B6-benchlock",
    "scenario": "judge-parameter-change",
    "single_stream": false,
@@ -331,7 +331,7 @@
    "scenario": "both-moved",
    "single_stream": true,
    "truth": "both",
-   "verdict": "regression"
+   "verdict": "stable"
   },
   {
    "accuracy": 0.0,
@@ -341,7 +341,7 @@
    "scenario": "both-moved",
    "single_stream": true,
    "truth": "both",
-   "verdict": "regression"
+   "verdict": "stable"
   },
   {
    "accuracy": 0.0,
@@ -351,7 +351,7 @@
    "scenario": "both-moved",
    "single_stream": true,
    "truth": "both",
-   "verdict": "regression"
+   "verdict": "stable"
   },
   {
    "accuracy": 0.0,
@@ -361,7 +361,7 @@
    "scenario": "both-moved",
    "single_stream": true,
    "truth": "both",
-   "verdict": "regression"
+   "verdict": "stable"
   },
   {
    "accuracy": 0.0,
@@ -485,5 +485,5 @@
   }
  ],
  "runs_per_stream": 60,
- "seeds_per_scenario": 5
+ "seeds_per_scenario": 20
 }

@@ -27,11 +27,17 @@ from benchlock.judge.base import (
 )
 from benchlock.model.pins import JudgePin
 
-#: Published prices per million tokens, used only for `benchlock plan`'s estimate. Out of
-#: date prices make the estimate wrong, never the verdict.
+#: Published prices per million tokens (input, output), used only for `benchlock plan`'s
+#: estimate. Out-of-date prices make the estimate wrong, never the verdict. Longest prefix
+#: wins, so `claude-opus-4-8` matches its own row rather than `claude-opus-4`.
 PRICES: dict[str, tuple[float, float]] = {
-    "claude-opus-4-1": (15.0, 75.0),
-    "claude-sonnet-4-5": (3.0, 15.0),
+    "claude-fable-5": (10.0, 50.0),
+    "claude-opus-5": (5.0, 25.0),
+    "claude-opus-4-8": (5.0, 25.0),
+    "claude-opus-4-7": (5.0, 25.0),
+    "claude-opus-4-6": (5.0, 25.0),
+    "claude-sonnet-5": (2.0, 10.0),
+    "claude-sonnet-4-6": (3.0, 15.0),
     "claude-haiku-4-5": (1.0, 5.0),
 }
 
@@ -46,10 +52,11 @@ class JudgeCallError(Exception):
 
 
 def _price_for(model: str) -> tuple[float, float]:
-    for prefix, price in PRICES.items():
-        if model.startswith(prefix):
-            return price
-    return (3.0, 15.0)
+    """Longest matching prefix, so a more specific model id beats a shorter one."""
+    matches = [(p, v) for p, v in PRICES.items() if model.startswith(p)]
+    if matches:
+        return max(matches, key=lambda kv: len(kv[0]))[1]
+    return (5.0, 25.0)  # unknown model: assume Opus-tier so we never under-quote
 
 
 def parse_score(text: str, scale: tuple[float, float]) -> float:
@@ -83,7 +90,16 @@ class AnthropicJudge:
     model: str = "claude-sonnet-4-5-20250929"
     rubric_text: str = ""
     scale: tuple[float, float] = (1.0, 5.0)
-    params: dict[str, Any] = field(default_factory=lambda: {"temperature": 0.0, "max_tokens": 16})
+    #: Request parameters. Current models (Sonnet 5, Opus 5, ...) REJECT temperature/top_p
+    #: with a 400 — thinking and `output_config.effort` replaced them. A judge scoring 1-5
+    #: is a classification task, so thinking is off and the token ceiling is tiny.
+    params: dict[str, Any] = field(
+        default_factory=lambda: {
+            "max_tokens": 16,
+            "thinking": {"type": "disabled"},
+            "output_config": {"effort": "low"},
+        }
+    )
     api_key: str | None = None
     #: Set by Phase 7.9 to defeat provider-side response caching.
     nonce_template: str = "\n\n<!-- request-id: {nonce} -->"
@@ -131,6 +147,15 @@ class AnthropicJudge:
                 messages=[{"role": "user", "content": prompt}],
                 **self.params,
             )
+            # A policy decline is an HTTP 200 with no usable score, not an exception.
+            if getattr(message, "stop_reason", None) == "refusal":
+                detail = getattr(message, "stop_details", None)
+                raise JudgeCallError(
+                    f"the judge declined to score item {request.item_id!r} "
+                    f"(category: {getattr(detail, 'category', 'unknown')})",
+                    "this item's content tripped a safety classifier; exclude it from the "
+                    "pool rather than recording a score that was never produced",
+                )
             text = "".join(
                 block.text for block in message.content if getattr(block, "type", "") == "text"
             )

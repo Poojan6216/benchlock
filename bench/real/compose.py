@@ -67,10 +67,10 @@ def scenarios() -> list[Scenario]:
             "judge-parameter-change",
             "judge",
             "a-baseline",
-            "d-temperature",
+            "d-effort",
             "a-baseline",
-            "d-temperature",
-            description="temperature moved from 0 to 1",
+            "d-effort",
+            description="the judge's reasoning effort was raised from low to high",
         ),
         Scenario(
             "system-regression",
@@ -126,7 +126,10 @@ def compose(
 ) -> tuple[list[RunRecord], list[RunRecord]]:
     """Build (system runs, anchor runs) by sampling from the pool. Deterministic in `seed`."""
     rng = np.random.default_rng(seed)
-    all_items = sorted(pool["scores"]["a-baseline"])
+    # Only items every pooled configuration scored. `.get(item, default)` would fabricate
+    # a score for a missing item, which is precisely the kind of invented number this
+    # project exists to make impossible.
+    all_items = sorted(set.intersection(*(set(v) for v in pool["scores"].values())))
     anchor_ids = all_items[:anchor_items]
     system_ids = all_items[:items_per_run]
 
@@ -185,8 +188,8 @@ def compose(
         system_obs = tuple(
             Observation(
                 item_id=item,
-                score=float(np.clip(system_scores.get(item, 0.5) + jitter[k], 0.0, 1.0)),
-                raw_score=1.0 + 4.0 * float(np.clip(system_scores.get(item, 0.5), 0.0, 1.0)),
+                score=float(np.clip(system_scores[item] + jitter[k], 0.0, 1.0)),
+                raw_score=1.0 + 4.0 * float(np.clip(system_scores[item], 0.0, 1.0)),
                 scale=(1.0, 5.0),
             )
             for k, item in enumerate(system_ids)
@@ -195,8 +198,8 @@ def compose(
         anchor_obs = tuple(
             Observation(
                 item_id=item,
-                score=float(np.clip(anchor_scores.get(item, 0.5) + anchor_jitter[k], 0.0, 1.0)),
-                raw_score=1.0 + 4.0 * float(np.clip(anchor_scores.get(item, 0.5), 0.0, 1.0)),
+                score=float(np.clip(anchor_scores[item] + anchor_jitter[k], 0.0, 1.0)),
+                raw_score=1.0 + 4.0 * float(np.clip(anchor_scores[item], 0.0, 1.0)),
                 scale=(1.0, 5.0),
             )
             for k, item in enumerate(anchor_ids)

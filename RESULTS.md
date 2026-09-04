@@ -100,56 +100,127 @@ construction whenever they fire, because "regression" is the only verdict availa
 
     uv run python bench/sim/run_sim.py --all
 
-## Tier 2 — real judges: NOT RUN
+## How much does a temperature-0 judge disagree with itself?
 
-**This section reports no real-judge numbers, because none were measured.** The build
-environment had no `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`, so no call was ever made to a
-hosted judge. Publishing simulated scores under this heading would be precisely the kind of
-invented number this project exists to make impossible.
+**18.9%.** That is the fraction of identical, repeated calls
+that came back with a *different* score — from a real hosted judge at its most
+deterministic setting, with a per-call cache-busting nonce so the provider could not serve
+a cached answer.
 
-What *is* complete: the provider adapters, the score-pool builder, the stream composer, the
-six scenarios with their ground truth, and the runner. The pipeline below was executed
-end-to-end against the deterministic built-in judge to prove the code path works. **These
-are simulated scores and say nothing about how real judges behave.**
+Measured over K=5 repeats of 182 items
+(1,820 pairwise comparisons), `anthropic/claude-sonnet-5`,
+thinking disabled, effort low.
+
+| quantity | value |
+|---|---:|
+| identical score on repeat | 81.10% |
+| **disagrees with itself** | **18.90%** |
+| items that varied at least once | 66/182 = 36.3% |
+| mean absolute difference | 0.0497 (0-1 scale) |
+| per-item SD | 0.0485 |
+| **run-mean SD** | **0.00742** |
+| independence ratio | **2.06** |
+
+Two things follow, and the second was not obvious in advance.
+
+**The premise holds.** A judge whose run mean wobbles by 0.0074 between
+identical calls will move a dashboard on its own. That is the noise floor every test in
+this tool is measured against, and it is not zero.
+
+**The judge's noise is correlated across items.** If each item wobbled independently, the
+run mean would move by `per_item_sd / sqrt(n)` = 0.00360.
+It actually moves 2.06x that much, which means a run-level offset
+is shifting every item together. This is the `shared_sd` component `benchlock plan` models,
+and it is why **a bigger anchor set buys less precision than `1/sqrt(n)` would suggest** —
+measured here rather than assumed.
+
+    uv run python bench/real/run_real.py --all
+
+## A judge's refusal rate is itself a form of drift
+
+Not something we set out to measure. While building the Tier 2 pool, the same 400 items
+were declined at wildly different rates depending only on how the judge was configured:
+
+| config | what changed | refused | rate | vs baseline |
+|---|---|---:|---:|---:|
+| `a-baseline` | claude-sonnet-5, base rubric, effort low | 9/400 | 2.2% | 1.0x |
+| `b-other-snapshot` | claude-haiku-4-5, base rubric | 5/400 | 1.2% | 0.56x |
+| `c-strict-rubric` | claude-sonnet-5, STRICT rubric, effort low | 60/400 | 15.0% | 6.67x |
+| `d-effort` | claude-sonnet-5, base rubric, effort HIGH | 27/400 | 6.8% | 3.0x |
+
+**Editing only the rubric text raised the refusal rate 6.7x.** Same model, same items, same
+everything else — a stricter grading instruction made the judge decline to grade
+15% of the corpus. Raising only the reasoning effort
+tripled it.
+
+And the boundary is not deterministic. Five identical repeated scorings of the same 200
+items declined between 7 and 10 of them.
+
+This matters beyond curiosity: **a refused item vanishes silently from the sample.** A tool
+that looks only at the scores it gets back sees a smaller, differently-composed corpus and
+cannot tell that anything happened. Benchlock does not currently monitor refusal rate — it
+watches scores — so this is a gap, and it is listed as one.
+
+Every refusal was a safety decline; there were 0 API errors in the run.
+
+    uv run python bench/real/build_pool.py --items 400 --anchor-items 200 --replicates 5
+
+## Tier 2 — real judges
+
+Tier 2 streams are **constructed by resampling pooled real judge scores**, not observed longitudinally. A fixed item pool was scored once under each of five judge configurations; the time axis is built by splicing those pools at known change points. That is what makes real judges affordable at this sample size, and it is a real limitation: simulation supplies the statistical power, real judges supply the premise, and neither is a longitudinal production study. We have not run one.
 
 | scenario | ground truth | method | verdict | correct |
 |---|---|---|---|---|
+| judge-version-bump | judge | B0 fixed threshold | stable | ❌ |
 | judge-version-bump | judge | B1 peeking t-test | regression | ❌ |
+| judge-version-bump | judge | B2 Bonferroni t-test | regression | ❌ |
+| judge-version-bump | judge | B3 CUSUM | regression | ❌ |
+| judge-version-bump | judge | B4 ADWIN | stable | ❌ |
+| judge-version-bump | judge | B4 DDM | stable | ❌ |
 | judge-version-bump | judge | B5 Benchlock, no anchor | regression | ❌ |
 | judge-version-bump | judge | B6 **Benchlock** | judge | ✅ |
+| judge-rubric-change | judge | B0 fixed threshold | regression | ❌ |
 | judge-rubric-change | judge | B1 peeking t-test | regression | ❌ |
+| judge-rubric-change | judge | B2 Bonferroni t-test | regression | ❌ |
+| judge-rubric-change | judge | B3 CUSUM | regression | ❌ |
+| judge-rubric-change | judge | B4 ADWIN | stable | ❌ |
+| judge-rubric-change | judge | B4 DDM | stable | ❌ |
 | judge-rubric-change | judge | B5 Benchlock, no anchor | regression | ❌ |
 | judge-rubric-change | judge | B6 **Benchlock** | judge | ✅ |
-| judge-parameter-change | judge | B1 peeking t-test | regression | ❌ |
+| judge-parameter-change | judge | B0 fixed threshold | stable | ❌ |
+| judge-parameter-change | judge | B1 peeking t-test | stable | ❌ |
+| judge-parameter-change | judge | B2 Bonferroni t-test | stable | ❌ |
+| judge-parameter-change | judge | B3 CUSUM | stable | ❌ |
+| judge-parameter-change | judge | B4 ADWIN | stable | ❌ |
+| judge-parameter-change | judge | B4 DDM | stable | ❌ |
 | judge-parameter-change | judge | B5 Benchlock, no anchor | stable | ❌ |
 | judge-parameter-change | judge | B6 **Benchlock** | stable | ❌ |
+| system-regression | system | B0 fixed threshold | regression | ✅ |
 | system-regression | system | B1 peeking t-test | regression | ✅ |
+| system-regression | system | B2 Bonferroni t-test | regression | ✅ |
+| system-regression | system | B3 CUSUM | regression | ✅ |
+| system-regression | system | B4 ADWIN | stable | ❌ |
+| system-regression | system | B4 DDM | stable | ❌ |
 | system-regression | system | B5 Benchlock, no anchor | regression | ✅ |
 | system-regression | system | B6 **Benchlock** | system | ✅ |
-| both-moved | both | B1 peeking t-test | regression | ❌ |
+| both-moved | both | B0 fixed threshold | stable | ❌ |
+| both-moved | both | B1 peeking t-test | stable | ❌ |
+| both-moved | both | B2 Bonferroni t-test | stable | ❌ |
+| both-moved | both | B3 CUSUM | stable | ❌ |
+| both-moved | both | B4 ADWIN | stable | ❌ |
+| both-moved | both | B4 DDM | stable | ❌ |
 | both-moved | both | B5 Benchlock, no anchor | regression | ❌ |
 | both-moved | both | B6 **Benchlock** | both | ✅ |
+| drift-free-control | stable | B0 fixed threshold | stable | ✅ |
 | drift-free-control | stable | B1 peeking t-test | stable | ✅ |
+| drift-free-control | stable | B2 Bonferroni t-test | stable | ✅ |
+| drift-free-control | stable | B3 CUSUM | stable | ✅ |
+| drift-free-control | stable | B4 ADWIN | stable | ✅ |
+| drift-free-control | stable | B4 DDM | stable | ✅ |
 | drift-free-control | stable | B5 Benchlock, no anchor | stable | ✅ |
 | drift-free-control | stable | B6 **Benchlock** | stable | ✅ |
 
-To run it for real, on a budget of roughly $3-8:
-
-```sh
-export ANTHROPIC_API_KEY=...   # and OPENAI_API_KEY for the cross-provider configuration
-uv run python bench/real/build_pool.py --items 400 --replicates 5 --dry-run  # cost first
-uv run python bench/real/build_pool.py --items 400 --replicates 5
-uv run python bench/real/run_real.py --all
-uv run python scripts/gen_results.py
-```
-
-Two things are unmeasured until then, and both are listed in the README's limitations:
-
-1. **Judge self-disagreement at temperature 0** (Phase 6.5). The most quotable number in
-   the project, and it requires a real judge to exist.
-2. **Whether a cache-busting nonce perturbs a real judge's scores** (Phase 7.9). The
-   mitigation is implemented and its effect is zero against the simulated judge — which is
-   an artefact of the simulation, not a finding.
+    uv run python bench/real/run_real.py --all
 
 ## Attacks that work against Benchlock
 
@@ -171,4 +242,4 @@ number is kept in the table with the commit that changed it.
 
 ## Cost
 
-Total spend across every real-judge run: **$0.00** over 3,000 judge calls.
+Total spend across every real-judge run: **$3.05** over 2,456 judge calls.

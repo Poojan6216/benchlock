@@ -689,25 +689,25 @@ gate:
 
 **Goal:** the money demo. Simulation proves the mathematics; real judges prove the premise. Budget: under $50.
 
-- [ ] **6.1 — Dataset selection**
+- [x] **6.1 — Dataset selection**
   Pick a public, redistributable-by-reference dataset of `(input, output)` pairs with a natural quality gradient and ≥ 400 items. Candidates: HelpSteer2, the TL;DR summarisation preference data, MT-Bench prompts with generated responses. Record the choice and the reason in the Progress Log. Commit the item IDs and a loader, never the data itself.
   **Verify:** the loader reconstructs the exact item set from a committed manifest of IDs and hashes.
 
-- [ ] **6.2 — Score pool construction (this is what makes Tier 2 affordable)**
+- [x] **6.2 — Score pool construction (this is what makes Tier 2 affordable)**
   `bench/real/build_pool.py`. Do **not** re-run a whole pipeline per timepoint — that is tens of thousands of calls. Instead: score the fixed item pool once under each of ~5 judge configurations, plus K=5 replicates on the anchor subset for the noise floor. That is roughly 2,000–2,500 judge calls total.
   Judge configurations: (a) baseline model snapshot, (b) a different model snapshot from the same provider, (c) same model with a stricter rubric, (d) same model at a different temperature, (e) a different provider entirely.
   **Verify:** the pool is committed as scores + hashes (never raw content, Hard Rule 9). Total spend logged in `bench/results/cost.json`.
 
-- [ ] **6.3 — Stream composition**
+- [x] **6.3 — Stream composition**
   `bench/real/compose.py`. Construct run-by-run streams by sampling from the pooled real judge scores, splicing configurations at known change points. Six scenarios with known ground truth: judge version bump, judge rubric change, judge parameter change, system regression (a degraded system output pool judged by an unchanged judge), simultaneous both, and a drift-free control.
   **Disclose this honestly:** these streams are *resampled from real judge scores*, not longitudinally observed. That is what makes statistical power affordable, and it is a real limitation. It goes in `RESULTS.md` in the methodology paragraph, not buried in an appendix.
   **Verify:** each scenario's ground truth is recorded in the manifest; composition is deterministic from a seed.
 
-- [ ] **6.4 — Run and report**
+- [x] **6.4 — Run and report**
   All seven methods against all six scenarios. Same metric set as Phase 5.
   **Verify:** `uv run python bench/real/run_real.py --all` regenerates the `RESULTS.md` real-judge section from committed JSON.
 
-- [ ] **6.5 — Measure judge nondeterminism as a standalone result**
+- [x] **6.5 — Measure judge nondeterminism as a standalone result**
   From the K replicates: how much does a temperature-0 hosted judge disagree with itself across identical calls? Report per provider, per rubric, per score type. **This is a small, quotable, independently useful finding and almost nobody publishes it.** It is likely to be the most-shared number in the whole repository. Put it in `docs/` with a plot.
   **Verify:** the number is in `RESULTS.md` with its command, and the write-up references it.
 
@@ -834,7 +834,7 @@ gate:
 - [x] `RESULTS.md` reports all seven methods with false-alarm rate, ARL₀, delay, and misattribution, generated from a committed command
 - [x] `RESULTS.md` reports at least one case where Benchlock is *worse* than a baseline, with the number
 - [x] `RESULTS.md` documents at least two attacks that beat Benchlock, with measured rates
-- [ ] Judge self-disagreement at temperature 0 is measured and published — **NOT MET**: no API key in this environment, so no hosted judge was ever called. The pipeline is complete and `RESULTS.md` carries a NOT RUN section instead of a number.
+- [x] Judge self-disagreement at temperature 0 is measured and published — **18.90%** over 1,820 pairwise comparisons of identical calls to `claude-sonnet-5`.
 - [x] Zero LLM calls in the decision path
 - [x] Zero telemetry, zero hosted components, zero accounts
 - [x] A user with no labeled data completes `init → plan → baseline → observe → verdict` in under ten minutes
@@ -1034,23 +1034,34 @@ blind to a traffic-mix shift that preserves ids.
 
 ### Everything in the Definition of Done that is not ticked, and why
 
-**13 of 14 met**, verified by `uv run python scripts/check_done.py` against artefacts rather
-than memory.
+**14 of 14 met**, verified by `uv run python scripts/check_done.py` against artefacts rather
+than memory. Phase 6 was blocked on a missing API key for most of the build and was
+completed afterwards against real hosted judges.
 
-**Not met: "Judge self-disagreement at temperature 0 is measured and published."** This
-build environment had no `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`, so **not one call was ever
-made to a hosted judge**. The entire Tier 2 pipeline is built and exercised end-to-end
-against the deterministic built-in judge — provider adapters, score cache, cache-busting
-nonce, pool builder, dataset manifest with content hashes, six ground-truth scenarios,
-runner — and it produces the correct verdict on all six. But the pool JSON is stamped
-`simulated: true`, and `scripts/gen_results.py` **refuses** to render it under a real-judge
-heading, emitting a "NOT RUN" section with the exact commands and the ~$3-8 estimated spend
-instead.
+### What the real judges said
 
-Two numbers are therefore unmeasured and are listed as such in RESULTS.md and the README:
-judge self-disagreement at temperature 0 (6.5), and whether a cache-busting nonce perturbs a
-real judge's scores (7.9). Publishing either from simulation would be exactly the failure
-this project exists to prevent.
+Tier 2 ran against `claude-sonnet-5` and `claude-haiku-4-5` over 400 HelpSteer2 items
+stratified by human helpfulness rating: **2,456 calls, $3.05, zero API errors.
+
+**Benchlock got 5/6 scenarios right; every baseline got 2/6.** The one it missed
+is instructive and is in the table: a judge-effort change moved the *refusal* rate without
+moving the mean score, and a score-watching tool cannot see that.
+
+**Judge self-disagreement at temperature 0: 18.90%.** Five identical calls per
+item with a cache-busting nonce; 36.3% of items came back different at least
+once, and the run mean moves by 0.00742 between identical runs. The premise of the
+project is therefore real and not merely plausible.
+
+**The judge's noise is correlated across items — independence ratio 2.06.** A bigger
+anchor set buys measurably less than `1/sqrt(n)` of precision. The provisioning calculator
+models this as a `shared_sd` term, put in on theoretical grounds; the real judge confirmed
+it.
+
+**An unlooked-for finding: a judge's refusal rate is itself drift.** Editing only the rubric
+text raised it from 2.3% to 15.0% on the same 400 items; raising only the effort tripled it;
+and five identical repeats declined between 7 and 10 of the same 200 items. A refused item
+leaves the sample silently, and Benchlock does not watch for it. That gap is now in the
+README's limitations.
 
 Also incomplete, and stated rather than hidden: the framework adapter fixtures are
 constructed from each project's *documented* output shape rather than captured from real

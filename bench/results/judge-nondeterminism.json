@@ -1,17 +1,30 @@
 {
  "command": "uv run python bench/real/run_real.py --all",
- "n_items": 200,
+ "n_items": 182,
+ "note": "Measured from K identical calls per item, each with a per-call cache-busting nonce so the provider cannot serve a cached answer. Every number here is a property of a real hosted judge at its most deterministic setting.",
  "replicates": 5,
  "rows": [
   {
-   "exact_agreement_rate": 0.0,
-   "mean_abs_pairwise_diff": 0.0685699459502373,
-   "model": "claude-sonnet-4-5-20250929",
-   "per_item_sd": 0.05763734162466963,
+   "exact_agreement_rate": 0.810989010989011,
+   "independence_ratio": 2.0644099312721322,
+   "items_that_ever_varied": 66,
+   "items_that_ever_varied_rate": 0.3626373626373626,
+   "mean_abs_pairwise_diff": 0.04972527472527472,
+   "model": "claude-sonnet-5",
+   "pairwise_comparisons": 1820,
+   "per_item_sd": 0.048506484544256406,
    "provider": "anthropic",
    "rubric": "base 1-5 helpfulness",
-   "run_mean_sd": 0.0050612112437749355,
-   "score_type": "likert5"
+   "run_mean_sd": 0.007422668179179281,
+   "run_means": [
+    0.25137,
+    0.25687,
+    0.24038,
+    0.25962,
+    0.25412
+   ],
+   "score_type": "likert5",
+   "self_disagreement_rate": 0.189010989010989
   }
  ]
 }

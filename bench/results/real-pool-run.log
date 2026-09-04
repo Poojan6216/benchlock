@@ -1,0 +1,59 @@
+no OPENAI_API_KEY — running 4 Anthropic configs, skipping cross-provider
+pool: 400 items x 4 configs
+noise floor: 200 anchors x 5 replicates
+total calls: ~2,400
+estimated spend: $2.82
+  scoring under a-baseline (the baseline judge)...
+      a-baseline 100/400
+      a-baseline 200/400
+      a-baseline 300/400
+      a-baseline 400/400
+      ! 9/400 call(s) failed — e.g. JudgeCallError: the judge declined to score item 'helpsteer2-0002' (category: bio)
+  fix: this item's content tripped a safety classifier; exclude it from the p
+  scoring under b-other-snapshot (a different model from the same provider — the snapshot-rotation analogue)...
+      b-other-snapshot 100/400
+      b-other-snapshot 200/400
+      b-other-snapshot 300/400
+      b-other-snapshot 400/400
+      ! 5/400 call(s) failed — e.g. JudgeCallError: judge returned no number: 'Ready to proceed. I will wait for you to provide the textbook pages on'
+  fix: the rubric must instruct the judge to 
+  scoring under c-strict-rubric (same model, stricter rubric)...
+      c-strict-rubric 100/400
+      c-strict-rubric 200/400
+      c-strict-rubric 300/400
+      c-strict-rubric 400/400
+      ! 60/400 call(s) failed — e.g. JudgeCallError: the judge declined to score item 'helpsteer2-0002' (category: bio)
+  fix: this item's content tripped a safety classifier; exclude it from the p
+  scoring under d-effort (same model and rubric, more reasoning effort)...
+      d-effort 100/400
+      d-effort 200/400
+      d-effort 300/400
+      d-effort 400/400
+      ! 27/400 call(s) failed — e.g. JudgeCallError: the judge declined to score item 'helpsteer2-0002' (category: bio)
+  fix: this item's content tripped a safety classifier; exclude it from the p
+  5 replicates on 200 anchors...
+      rep 1/5 100/200
+      rep 1/5 200/200
+      ! 9/200 call(s) failed — e.g. JudgeCallError: the judge declined to score item 'helpsteer2-0002' (category: bio)
+  fix: this item's content tripped a safety classifier; exclude it from the p
+      rep 2/5 100/200
+      rep 2/5 200/200
+      ! 8/200 call(s) failed — e.g. JudgeCallError: the judge declined to score item 'helpsteer2-0002' (category: bio)
+  fix: this item's content tripped a safety classifier; exclude it from the p
+      rep 3/5 100/200
+      rep 3/5 200/200
+      ! 7/200 call(s) failed — e.g. JudgeCallError: the judge declined to score item 'helpsteer2-0002' (category: bio)
+  fix: this item's content tripped a safety classifier; exclude it from the p
+      rep 4/5 100/200
+      rep 4/5 200/200
+      ! 10/200 call(s) failed — e.g. JudgeCallError: the judge declined to score item 'helpsteer2-0002' (category: bio)
+  fix: this item's content tripped a safety classifier; exclude it from the p
+      rep 5/5 100/200
+      rep 5/5 200/200
+      ! 9/200 call(s) failed — e.g. JudgeCallError: the judge declined to score item 'helpsteer2-0002' (category: bio)
+  fix: this item's content tripped a safety classifier; exclude it from the p
+  intersected pool to 327 items scored by every config {'a-baseline': 64, 'b-other-snapshot': 68, 'c-strict-rubric': 13, 'd-effort': 46}
+
+wrote bench/results/real-pool.json (2,456 calls, ~$3.05)
+
+[exited with code 0]

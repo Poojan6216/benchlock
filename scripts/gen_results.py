@@ -262,6 +262,9 @@ def main() -> int:
 
     if nondeterminism is not None and not (pool or {}).get("simulated"):
         parts.append(_nondeterminism_section(nondeterminism))
+    refusals = load("judge-refusal-rates.json")
+    if refusals is not None:
+        parts.append(_refusal_section(refusals))
     if real is not None and pool is not None and pool.get("simulated"):
         # Hard Rule 5. A simulated pool cannot answer a question about real judges, and
         # publishing it under a "real judges" heading would be exactly the kind of
@@ -299,19 +302,75 @@ def main() -> int:
 
 
 def _nondeterminism_section(data: dict[str, Any]) -> str:
-    rows = "\n".join(
-        f"| {r['provider']}/{r['model']} | {r['rubric']} | {r['score_type']} | "
-        f"{r['exact_agreement_rate']:.1%} | {r['mean_abs_pairwise_diff']:.4f} | "
-        f"{r['run_mean_sd']:.4f} |"
-        for r in data["rows"]
-    )
+    r = data["rows"][0]
     return f"""## How much does a temperature-0 judge disagree with itself?
 
-Measured from K={data["replicates"]} identical calls over {data["n_items"]} items.
+**{r["self_disagreement_rate"]:.1%}.** That is the fraction of identical, repeated calls
+that came back with a *different* score — from a real hosted judge at its most
+deterministic setting, with a per-call cache-busting nonce so the provider could not serve
+a cached answer.
 
-| judge | rubric | score type | identical scores | mean |Δ| | run-mean SD |
-|---|---|---|---:|---:|---:|
+Measured over K={data["replicates"]} repeats of {data["n_items"]} items
+({r["pairwise_comparisons"]:,} pairwise comparisons), `{r["provider"]}/{r["model"]}`,
+thinking disabled, effort low.
+
+| quantity | value |
+|---|---:|
+| identical score on repeat | {r["exact_agreement_rate"]:.2%} |
+| **disagrees with itself** | **{r["self_disagreement_rate"]:.2%}** |
+| items that varied at least once | {r["items_that_ever_varied"]}/{data["n_items"]} = {r["items_that_ever_varied_rate"]:.1%} |
+| mean absolute difference | {r["mean_abs_pairwise_diff"]:.4f} (0-1 scale) |
+| per-item SD | {r["per_item_sd"]:.4f} |
+| **run-mean SD** | **{r["run_mean_sd"]:.5f}** |
+| independence ratio | **{r["independence_ratio"]:.2f}** |
+
+Two things follow, and the second was not obvious in advance.
+
+**The premise holds.** A judge whose run mean wobbles by {r["run_mean_sd"]:.4f} between
+identical calls will move a dashboard on its own. That is the noise floor every test in
+this tool is measured against, and it is not zero.
+
+**The judge's noise is correlated across items.** If each item wobbled independently, the
+run mean would move by `per_item_sd / sqrt(n)` = {r["per_item_sd"] / (data["n_items"] ** 0.5):.5f}.
+It actually moves {r["independence_ratio"]:.2f}x that much, which means a run-level offset
+is shifting every item together. This is the `shared_sd` component `benchlock plan` models,
+and it is why **a bigger anchor set buys less precision than `1/sqrt(n)` would suggest** —
+measured here rather than assumed.
+
+    {data["command"]}
+"""
+
+
+def _refusal_section(data: dict[str, Any]) -> str:
+    rows = "\n".join(
+        f"| `{r['config']}` | {r['configuration']} | {r['refused']}/{r['requested']} | "
+        f"{r['refusal_rate']:.1%} | {r['vs_baseline_multiple']}x |"
+        for r in data["per_config"]
+    )
+    reps = data["replicates_same_config"]
+    return f"""## A judge's refusal rate is itself a form of drift
+
+Not something we set out to measure. While building the Tier 2 pool, the same 400 items
+were declined at wildly different rates depending only on how the judge was configured:
+
+| config | what changed | refused | rate | vs baseline |
+|---|---|---:|---:|---:|
 {rows}
+
+**Editing only the rubric text raised the refusal rate 6.7x.** Same model, same items, same
+everything else — a stricter grading instruction made the judge decline to grade
+{data["per_config"][2]["refusal_rate"]:.0%} of the corpus. Raising only the reasoning effort
+tripled it.
+
+And the boundary is not deterministic. Five identical repeated scorings of the same 200
+items declined between {reps["min_refused"]} and {reps["max_refused"]} of them.
+
+This matters beyond curiosity: **a refused item vanishes silently from the sample.** A tool
+that looks only at the scores it gets back sees a smaller, differently-composed corpus and
+cannot tell that anything happened. Benchlock does not currently monitor refusal rate — it
+watches scores — so this is a gap, and it is listed as one.
+
+Every refusal was a safety decline; there were {data["api_errors"]} API errors in the run.
 
     {data["command"]}
 """
