@@ -1,0 +1,164 @@
+{
+ "command": "uv run python bench/adversarial/run_adversarial.py --all",
+ "elapsed_seconds": 76.0,
+ "rows": [
+  {
+   "description": "a judge change confined to a region the anchor set does not cover",
+   "detail": {
+    "misattribution_by_coverage": {
+     "0.0": {
+      "both": 0.0,
+      "indeterminate": 0.0,
+      "judge": 0.0,
+      "stable": 0.0,
+      "system_misattribution": 1.0
+     },
+     "0.25": {
+      "both": 0.4,
+      "indeterminate": 0.0,
+      "judge": 0.0,
+      "stable": 0.0,
+      "system_misattribution": 0.6
+     },
+     "0.5": {
+      "both": 0.975,
+      "indeterminate": 0.0,
+      "judge": 0.025,
+      "stable": 0.0,
+      "system_misattribution": 0.0
+     },
+     "0.75": {
+      "both": 0.25,
+      "indeterminate": 0.0,
+      "judge": 0.75,
+      "stable": 0.0,
+      "system_misattribution": 0.0
+     },
+     "1.0": {
+      "both": 0.0,
+      "indeterminate": 0.0,
+      "judge": 1.0,
+      "stable": 0.0,
+      "system_misattribution": 0.0
+     }
+    },
+    "trials_per_point": 40
+   },
+   "failure_rate": 1.0,
+   "status": "WORKS \u2014 the fundamental limitation of the design; measured, warned about, never eliminated",
+   "strategy": "7.1 anchor evasion"
+  },
+  {
+   "description": "drift introduced gradually, below the per-run detectable threshold",
+   "detail": {
+    "detection_rate_by_ramp_per_run": {
+     "0.0002": 0.0,
+     "0.001": 1.0,
+     "0.002": 1.0,
+     "0.005": 1.0,
+     "0.01": 1.0
+    },
+    "never_detected_rates": [
+     "0.0002"
+    ],
+    "slowest_reliably_caught": 0.001,
+    "trials_per_point": 25
+   },
+   "failure_rate": 0.2,
+   "status": "WORKS below ~0.001 per run. 1 of 5 tested ramp rates were never detected within the horizon. A ramp slower than the noise floor is invisible to every method, this one included; the boundary is the useful number",
+   "strategy": "7.2 slow ramp"
+  },
+  {
+   "description": "judge and system moving in opposite directions; the net score is flat",
+   "detail": {
+    "trials_per_point": 40,
+    "verdicts_by_effect_size": {
+     "0.03": {
+      "both": 0.4,
+      "indeterminate": 0.0,
+      "judge": 0.35,
+      "stable_MISSED": 0.25,
+      "system": 0.0
+     },
+     "0.05": {
+      "both": 0.975,
+      "indeterminate": 0.0,
+      "judge": 0.025,
+      "stable_MISSED": 0.0,
+      "system": 0.0
+     },
+     "0.1": {
+      "both": 1.0,
+      "indeterminate": 0.0,
+      "judge": 0.0,
+      "stable_MISSED": 0.0,
+      "system": 0.0
+     }
+    }
+   },
+   "failure_rate": 0.25,
+   "status": "PARTIALLY DEFENDED \u2014 the difference-in-differences process sees it where a single stream cannot, but a small enough cancellation is still missed",
+   "strategy": "7.3 cancellation"
+  },
+  {
+   "description": "the team's own standard changed; frozen anchors read it as judge drift",
+   "detail": {
+    "median_runs_until_reported": 20.0,
+    "trials": 30
+   },
+   "failure_rate": 1.0,
+   "status": "WORKS BY CONSTRUCTION \u2014 benchlock reports *that* the judge changed, never *why*. A deliberate rubric change is indistinguishable from provider drift, and `benchlock rebaseline --reason` is the intended answer",
+   "strategy": "7.4 anchor staleness"
+  },
+  {
+   "description": "the eval suite itself moves, adding a third cause benchlock cannot model",
+   "detail": {
+    "refusal_rate_when_item_set_changes": 1.0,
+    "system_misattribution_when_ids_stable": 1.0,
+    "trials": 30
+   },
+   "failure_rate": 1.0,
+   "status": "PARTIALLY DEFENDED. When the item set changes, the suite-hash check refuses 100% of the time. When the ids stay the same and only the questions behind them get harder, the check is blind and 100% become a confident `system` verdict. Hashing item ids does not hash item content, and a fixed suite is an assumption benchlock states but cannot verify",
+   "strategy": "7.5 input distribution shift"
+  },
+  {
+   "description": "worst-case ordering of observations within each run",
+   "detail": {
+    "median_delay_adversarial_order": 22.0,
+    "median_delay_random_order": 22.0,
+    "penalty_runs": 0.0,
+    "trials": 30
+   },
+   "failure_rate": 0.0,
+   "status": "NEGLIGIBLE \u2014 median delay penalty +0.0 runs. The stream is monitored at run level, so within-run ordering cannot starve the bets",
+   "strategy": "7.6 adversarial ordering"
+  },
+  {
+   "description": "near-degenerate score distributions and out-of-range scores",
+   "detail": {
+    "cases": {
+     "99pct_at_ceiling": "system",
+     "out_of_range": "refused at ingest",
+     "zero_variance": "system"
+    }
+   },
+   "failure_rate": 0.0,
+   "status": "DEFENDED \u2014 out-of-range scores are refused at ingest rather than clamped, and degenerate distributions produce a conservative verdict rather than a wrong one",
+   "strategy": "7.7 heavy tails and bound violations"
+  },
+  {
+   "description": "a cached judge returns yesterday's answers, hiding real drift",
+   "detail": {
+    "drift_visible_runs_no_cache": 20,
+    "drift_visible_runs_with_nonce": 20,
+    "drift_visible_runs_without_nonce": 0,
+    "nonce_effect_is_measurable_only_against_a_real_judge": true,
+    "nonce_effect_on_mean_score_SIMULATED": 0.0,
+    "trials": 20
+   },
+   "failure_rate": 1.0,
+   "status": "DEFENDED by a per-run nonce: drift visible in 0/20 runs without it, 20/20 with it. NOTE: the nonce's measured effect on the mean score here is 0.0000, but that is an artefact of the simulated judge, whose nonce touches only the cache key. Whether a nonce perturbs a real judge's scores is a question only a real judge can answer, and it is measured in Tier 2",
+   "strategy": "7.9 provider-side response caching"
+  }
+ ]
+}

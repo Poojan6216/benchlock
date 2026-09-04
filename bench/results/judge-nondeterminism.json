@@ -1,0 +1,17 @@
+{
+ "command": "uv run python bench/real/run_real.py --all",
+ "n_items": 200,
+ "replicates": 5,
+ "rows": [
+  {
+   "exact_agreement_rate": 0.0,
+   "mean_abs_pairwise_diff": 0.0685699459502373,
+   "model": "claude-sonnet-4-5-20250929",
+   "per_item_sd": 0.05763734162466963,
+   "provider": "anthropic",
+   "rubric": "base 1-5 helpfulness",
+   "run_mean_sd": 0.0050612112437749355,
+   "score_type": "likert5"
+  }
+ ]
+}

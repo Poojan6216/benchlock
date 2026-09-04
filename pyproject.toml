@@ -89,6 +89,9 @@ select = [
     "ARG",              # unused arguments
 ]
 ignore = [
+    "RUF001",   # prose in docstrings and generated markdown uses real typography (×, —, ≥)
+    "RUF002",
+    "RUF003",
     "ANN401",   # allow Any in narrowly-scoped internal helpers (never in public sigs; mypy strict guards)
     "N803",     # math code uses capital arg names (X, K)
     "N806",     # math code uses capital locals (X, K, M)
@@ -113,7 +116,7 @@ show_error_codes = true
 files = ["src"]
 
 [[tool.mypy.overrides]]
-module = ["scipy.*", "river.*", "confseq.*", "matplotlib.*", "ulid.*"]
+module = ["scipy.*", "river.*", "confseq.*", "matplotlib.*", "ulid.*", "anthropic.*", "openai.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

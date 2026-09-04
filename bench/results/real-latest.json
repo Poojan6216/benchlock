@@ -1,0 +1,489 @@
+{
+ "command": "uv run python bench/real/run_real.py --all",
+ "elapsed_seconds": 11.4,
+ "methodology": "Tier 2 streams are **constructed by resampling pooled real judge scores**, not observed longitudinally. A fixed item pool was scored once under each of five judge configurations; the time axis is built by splicing those pools at known change points. That is what makes real judges affordable at this sample size, and it is a real limitation: simulation supplies the statistical power, real judges supply the premise, and neither is a longitudinal production study. We have not run one.",
+ "rows": [
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "the provider rotated the snapshot; the system never changed",
+   "method": "B0-fixed-threshold",
+   "scenario": "judge-version-bump",
+   "single_stream": true,
+   "truth": "judge",
+   "verdict": "regression"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "the provider rotated the snapshot; the system never changed",
+   "method": "B1-peeking-t-test",
+   "scenario": "judge-version-bump",
+   "single_stream": true,
+   "truth": "judge",
+   "verdict": "regression"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "the provider rotated the snapshot; the system never changed",
+   "method": "B2-bonferroni-t-test",
+   "scenario": "judge-version-bump",
+   "single_stream": true,
+   "truth": "judge",
+   "verdict": "regression"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "the provider rotated the snapshot; the system never changed",
+   "method": "B3-cusum",
+   "scenario": "judge-version-bump",
+   "single_stream": true,
+   "truth": "judge",
+   "verdict": "regression"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "the provider rotated the snapshot; the system never changed",
+   "method": "B4-adwin",
+   "scenario": "judge-version-bump",
+   "single_stream": true,
+   "truth": "judge",
+   "verdict": "stable"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "the provider rotated the snapshot; the system never changed",
+   "method": "B4-ddm",
+   "scenario": "judge-version-bump",
+   "single_stream": true,
+   "truth": "judge",
+   "verdict": "stable"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "the provider rotated the snapshot; the system never changed",
+   "method": "B5-benchlock-no-anchor",
+   "scenario": "judge-version-bump",
+   "single_stream": true,
+   "truth": "judge",
+   "verdict": "regression"
+  },
+  {
+   "accuracy": 1.0,
+   "correct": true,
+   "description": "the provider rotated the snapshot; the system never changed",
+   "method": "B6-benchlock",
+   "scenario": "judge-version-bump",
+   "single_stream": false,
+   "truth": "judge",
+   "verdict": "judge"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "a teammate edited the rubric to be stricter",
+   "method": "B0-fixed-threshold",
+   "scenario": "judge-rubric-change",
+   "single_stream": true,
+   "truth": "judge",
+   "verdict": "regression"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "a teammate edited the rubric to be stricter",
+   "method": "B1-peeking-t-test",
+   "scenario": "judge-rubric-change",
+   "single_stream": true,
+   "truth": "judge",
+   "verdict": "regression"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "a teammate edited the rubric to be stricter",
+   "method": "B2-bonferroni-t-test",
+   "scenario": "judge-rubric-change",
+   "single_stream": true,
+   "truth": "judge",
+   "verdict": "regression"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "a teammate edited the rubric to be stricter",
+   "method": "B3-cusum",
+   "scenario": "judge-rubric-change",
+   "single_stream": true,
+   "truth": "judge",
+   "verdict": "regression"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "a teammate edited the rubric to be stricter",
+   "method": "B4-adwin",
+   "scenario": "judge-rubric-change",
+   "single_stream": true,
+   "truth": "judge",
+   "verdict": "stable"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "a teammate edited the rubric to be stricter",
+   "method": "B4-ddm",
+   "scenario": "judge-rubric-change",
+   "single_stream": true,
+   "truth": "judge",
+   "verdict": "stable"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "a teammate edited the rubric to be stricter",
+   "method": "B5-benchlock-no-anchor",
+   "scenario": "judge-rubric-change",
+   "single_stream": true,
+   "truth": "judge",
+   "verdict": "regression"
+  },
+  {
+   "accuracy": 1.0,
+   "correct": true,
+   "description": "a teammate edited the rubric to be stricter",
+   "method": "B6-benchlock",
+   "scenario": "judge-rubric-change",
+   "single_stream": false,
+   "truth": "judge",
+   "verdict": "judge"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "temperature moved from 0 to 1",
+   "method": "B0-fixed-threshold",
+   "scenario": "judge-parameter-change",
+   "single_stream": true,
+   "truth": "judge",
+   "verdict": "stable"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "temperature moved from 0 to 1",
+   "method": "B1-peeking-t-test",
+   "scenario": "judge-parameter-change",
+   "single_stream": true,
+   "truth": "judge",
+   "verdict": "regression"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "temperature moved from 0 to 1",
+   "method": "B2-bonferroni-t-test",
+   "scenario": "judge-parameter-change",
+   "single_stream": true,
+   "truth": "judge",
+   "verdict": "stable"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "temperature moved from 0 to 1",
+   "method": "B3-cusum",
+   "scenario": "judge-parameter-change",
+   "single_stream": true,
+   "truth": "judge",
+   "verdict": "stable"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "temperature moved from 0 to 1",
+   "method": "B4-adwin",
+   "scenario": "judge-parameter-change",
+   "single_stream": true,
+   "truth": "judge",
+   "verdict": "stable"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "temperature moved from 0 to 1",
+   "method": "B4-ddm",
+   "scenario": "judge-parameter-change",
+   "single_stream": true,
+   "truth": "judge",
+   "verdict": "stable"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "temperature moved from 0 to 1",
+   "method": "B5-benchlock-no-anchor",
+   "scenario": "judge-parameter-change",
+   "single_stream": true,
+   "truth": "judge",
+   "verdict": "stable"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "temperature moved from 0 to 1",
+   "method": "B6-benchlock",
+   "scenario": "judge-parameter-change",
+   "single_stream": false,
+   "truth": "judge",
+   "verdict": "stable"
+  },
+  {
+   "accuracy": 1.0,
+   "correct": true,
+   "description": "degraded system outputs, judged by an unchanged judge",
+   "method": "B0-fixed-threshold",
+   "scenario": "system-regression",
+   "single_stream": true,
+   "truth": "system",
+   "verdict": "regression"
+  },
+  {
+   "accuracy": 1.0,
+   "correct": true,
+   "description": "degraded system outputs, judged by an unchanged judge",
+   "method": "B1-peeking-t-test",
+   "scenario": "system-regression",
+   "single_stream": true,
+   "truth": "system",
+   "verdict": "regression"
+  },
+  {
+   "accuracy": 1.0,
+   "correct": true,
+   "description": "degraded system outputs, judged by an unchanged judge",
+   "method": "B2-bonferroni-t-test",
+   "scenario": "system-regression",
+   "single_stream": true,
+   "truth": "system",
+   "verdict": "regression"
+  },
+  {
+   "accuracy": 1.0,
+   "correct": true,
+   "description": "degraded system outputs, judged by an unchanged judge",
+   "method": "B3-cusum",
+   "scenario": "system-regression",
+   "single_stream": true,
+   "truth": "system",
+   "verdict": "regression"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "degraded system outputs, judged by an unchanged judge",
+   "method": "B4-adwin",
+   "scenario": "system-regression",
+   "single_stream": true,
+   "truth": "system",
+   "verdict": "stable"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "degraded system outputs, judged by an unchanged judge",
+   "method": "B4-ddm",
+   "scenario": "system-regression",
+   "single_stream": true,
+   "truth": "system",
+   "verdict": "stable"
+  },
+  {
+   "accuracy": 1.0,
+   "correct": true,
+   "description": "degraded system outputs, judged by an unchanged judge",
+   "method": "B5-benchlock-no-anchor",
+   "scenario": "system-regression",
+   "single_stream": true,
+   "truth": "system",
+   "verdict": "regression"
+  },
+  {
+   "accuracy": 1.0,
+   "correct": true,
+   "description": "degraded system outputs, judged by an unchanged judge",
+   "method": "B6-benchlock",
+   "scenario": "system-regression",
+   "single_stream": false,
+   "truth": "system",
+   "verdict": "system"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "a judge swap and a system regression in the same window",
+   "method": "B0-fixed-threshold",
+   "scenario": "both-moved",
+   "single_stream": true,
+   "truth": "both",
+   "verdict": "regression"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "a judge swap and a system regression in the same window",
+   "method": "B1-peeking-t-test",
+   "scenario": "both-moved",
+   "single_stream": true,
+   "truth": "both",
+   "verdict": "regression"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "a judge swap and a system regression in the same window",
+   "method": "B2-bonferroni-t-test",
+   "scenario": "both-moved",
+   "single_stream": true,
+   "truth": "both",
+   "verdict": "regression"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "a judge swap and a system regression in the same window",
+   "method": "B3-cusum",
+   "scenario": "both-moved",
+   "single_stream": true,
+   "truth": "both",
+   "verdict": "regression"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "a judge swap and a system regression in the same window",
+   "method": "B4-adwin",
+   "scenario": "both-moved",
+   "single_stream": true,
+   "truth": "both",
+   "verdict": "stable"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "a judge swap and a system regression in the same window",
+   "method": "B4-ddm",
+   "scenario": "both-moved",
+   "single_stream": true,
+   "truth": "both",
+   "verdict": "stable"
+  },
+  {
+   "accuracy": 0.0,
+   "correct": false,
+   "description": "a judge swap and a system regression in the same window",
+   "method": "B5-benchlock-no-anchor",
+   "scenario": "both-moved",
+   "single_stream": true,
+   "truth": "both",
+   "verdict": "regression"
+  },
+  {
+   "accuracy": 1.0,
+   "correct": true,
+   "description": "a judge swap and a system regression in the same window",
+   "method": "B6-benchlock",
+   "scenario": "both-moved",
+   "single_stream": false,
+   "truth": "both",
+   "verdict": "both"
+  },
+  {
+   "accuracy": 1.0,
+   "correct": true,
+   "description": "nothing changed; the control",
+   "method": "B0-fixed-threshold",
+   "scenario": "drift-free-control",
+   "single_stream": true,
+   "truth": "stable",
+   "verdict": "stable"
+  },
+  {
+   "accuracy": 1.0,
+   "correct": true,
+   "description": "nothing changed; the control",
+   "method": "B1-peeking-t-test",
+   "scenario": "drift-free-control",
+   "single_stream": true,
+   "truth": "stable",
+   "verdict": "stable"
+  },
+  {
+   "accuracy": 1.0,
+   "correct": true,
+   "description": "nothing changed; the control",
+   "method": "B2-bonferroni-t-test",
+   "scenario": "drift-free-control",
+   "single_stream": true,
+   "truth": "stable",
+   "verdict": "stable"
+  },
+  {
+   "accuracy": 1.0,
+   "correct": true,
+   "description": "nothing changed; the control",
+   "method": "B3-cusum",
+   "scenario": "drift-free-control",
+   "single_stream": true,
+   "truth": "stable",
+   "verdict": "stable"
+  },
+  {
+   "accuracy": 1.0,
+   "correct": true,
+   "description": "nothing changed; the control",
+   "method": "B4-adwin",
+   "scenario": "drift-free-control",
+   "single_stream": true,
+   "truth": "stable",
+   "verdict": "stable"
+  },
+  {
+   "accuracy": 1.0,
+   "correct": true,
+   "description": "nothing changed; the control",
+   "method": "B4-ddm",
+   "scenario": "drift-free-control",
+   "single_stream": true,
+   "truth": "stable",
+   "verdict": "stable"
+  },
+  {
+   "accuracy": 1.0,
+   "correct": true,
+   "description": "nothing changed; the control",
+   "method": "B5-benchlock-no-anchor",
+   "scenario": "drift-free-control",
+   "single_stream": true,
+   "truth": "stable",
+   "verdict": "stable"
+  },
+  {
+   "accuracy": 1.0,
+   "correct": true,
+   "description": "nothing changed; the control",
+   "method": "B6-benchlock",
+   "scenario": "drift-free-control",
+   "single_stream": false,
+   "truth": "stable",
+   "verdict": "stable"
+  }
+ ],
+ "runs_per_stream": 60,
+ "seeds_per_scenario": 5
+}

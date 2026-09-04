@@ -1,0 +1,147 @@
+{
+ "alpha": 0.05,
+ "anchor_items": 200,
+ "baseline_runs": 8,
+ "elapsed_seconds": 452.3,
+ "generated_by": "uv run python bench/sim/run_sim.py --headline --seeds 500 --horizon 150",
+ "horizon": 150,
+ "judge": {
+  "B0-fixed-threshold": {
+   "alarm_rate": 1.0,
+   "arl0": 17.0,
+   "single_stream": true,
+   "verdicts": {
+    "regression": 500
+   }
+  },
+  "B1-peeking-t-test": {
+   "alarm_rate": 1.0,
+   "arl0": 15.176,
+   "single_stream": true,
+   "verdicts": {
+    "regression": 500
+   }
+  },
+  "B2-bonferroni-t-test": {
+   "alarm_rate": 1.0,
+   "arl0": 16.486,
+   "single_stream": true,
+   "verdicts": {
+    "regression": 500
+   }
+  },
+  "B3-cusum": {
+   "alarm_rate": 1.0,
+   "arl0": 17.0,
+   "single_stream": true,
+   "verdicts": {
+    "regression": 500
+   }
+  },
+  "B4-adwin": {
+   "alarm_rate": 0.0,
+   "arl0": 142.0,
+   "single_stream": true,
+   "verdicts": {
+    "stable": 500
+   }
+  },
+  "B4-ddm": {
+   "alarm_rate": 0.01,
+   "arl0": 140.736,
+   "single_stream": true,
+   "verdicts": {
+    "regression": 5,
+    "stable": 495
+   }
+  },
+  "B5-benchlock-no-anchor": {
+   "alarm_rate": 1.0,
+   "arl0": 33.174,
+   "single_stream": true,
+   "verdicts": {
+    "regression": 500
+   }
+  },
+  "B6-benchlock": {
+   "alarm_rate": 1.0,
+   "arl0": 33.172,
+   "single_stream": false,
+   "verdicts": {
+    "judge": 500
+   }
+  }
+ },
+ "monitored_runs": 142,
+ "obs_per_run": 200,
+ "per_item_sd": 0.08,
+ "seeds": 500,
+ "stable": {
+  "B0-fixed-threshold": {
+   "alarm_rate": 0.0,
+   "arl0": 142.0,
+   "single_stream": true,
+   "verdicts": {
+    "stable": 500
+   }
+  },
+  "B1-peeking-t-test": {
+   "alarm_rate": 0.206,
+   "arl0": 113.912,
+   "single_stream": true,
+   "verdicts": {
+    "regression": 103,
+    "stable": 397
+   }
+  },
+  "B2-bonferroni-t-test": {
+   "alarm_rate": 0.086,
+   "arl0": 129.934,
+   "single_stream": true,
+   "verdicts": {
+    "regression": 43,
+    "stable": 457
+   }
+  },
+  "B3-cusum": {
+   "alarm_rate": 0.0,
+   "arl0": 142.0,
+   "single_stream": true,
+   "verdicts": {
+    "stable": 500
+   }
+  },
+  "B4-adwin": {
+   "alarm_rate": 0.0,
+   "arl0": 142.0,
+   "single_stream": true,
+   "verdicts": {
+    "stable": 500
+   }
+  },
+  "B4-ddm": {
+   "alarm_rate": 0.0,
+   "arl0": 142.0,
+   "single_stream": true,
+   "verdicts": {
+    "stable": 500
+   }
+  },
+  "B5-benchlock-no-anchor": {
+   "alarm_rate": 0.0,
+   "arl0": 142.0,
+   "single_stream": true,
+   "verdicts": {
+    "stable": 500
+   }
+  },
+  "B6-benchlock": {
+   "alarm_rate": 0.0,
+   "arl0": 142.0,
+   "single_stream": false,
+   "verdicts": {
+    "stable": 500
+   }
+  }
+ }
+}

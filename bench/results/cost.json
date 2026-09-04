@@ -1,0 +1,6 @@
+{
+ "command": "uv run python bench/real/build_pool.py",
+ "total_calls": 3000,
+ "total_dollars": 0.0,
+ "note": "estimated from published per-token prices and observed token counts"
+}

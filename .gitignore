@@ -14,3 +14,7 @@ htmlcov/
 .DS_Store
 .benchlock/
 !tests/fixtures/**/.benchlock/
+
+# Tier 2 needs a local copy of the eval dataset; it is reconstructed from
+# bench/real/pool-manifest.json and never committed (Hard Rule 9).
+data/
