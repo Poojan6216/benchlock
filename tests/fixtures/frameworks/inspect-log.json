@@ -1,0 +1,331 @@
+{
+ "eval": {
+  "task": "helpfulness",
+  "model": "anthropic/claude"
+ },
+ "results": {
+  "scores": []
+ },
+ "samples": [
+  {
+   "id": "s0",
+   "scores": {
+    "model_graded_qa": {
+     "value": "I"
+    }
+   }
+  },
+  {
+   "id": "s1",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s2",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s3",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s4",
+   "scores": {
+    "model_graded_qa": {
+     "value": "I"
+    }
+   }
+  },
+  {
+   "id": "s5",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s6",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s7",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s8",
+   "scores": {
+    "model_graded_qa": {
+     "value": "I"
+    }
+   }
+  },
+  {
+   "id": "s9",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s10",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s11",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s12",
+   "scores": {
+    "model_graded_qa": {
+     "value": "I"
+    }
+   }
+  },
+  {
+   "id": "s13",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s14",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s15",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s16",
+   "scores": {
+    "model_graded_qa": {
+     "value": "I"
+    }
+   }
+  },
+  {
+   "id": "s17",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s18",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s19",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s20",
+   "scores": {
+    "model_graded_qa": {
+     "value": "I"
+    }
+   }
+  },
+  {
+   "id": "s21",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s22",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s23",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s24",
+   "scores": {
+    "model_graded_qa": {
+     "value": "I"
+    }
+   }
+  },
+  {
+   "id": "s25",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s26",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s27",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s28",
+   "scores": {
+    "model_graded_qa": {
+     "value": "I"
+    }
+   }
+  },
+  {
+   "id": "s29",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s30",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s31",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s32",
+   "scores": {
+    "model_graded_qa": {
+     "value": "I"
+    }
+   }
+  },
+  {
+   "id": "s33",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s34",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s35",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s36",
+   "scores": {
+    "model_graded_qa": {
+     "value": "I"
+    }
+   }
+  },
+  {
+   "id": "s37",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s38",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  },
+  {
+   "id": "s39",
+   "scores": {
+    "model_graded_qa": {
+     "value": "C"
+    }
+   }
+  }
+ ]
+}

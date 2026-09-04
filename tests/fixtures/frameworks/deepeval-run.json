@@ -1,0 +1,484 @@
+{
+ "testCases": [
+  {
+   "name": "t0",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.6,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t1",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.605,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t2",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.61,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t3",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.615,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t4",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.62,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t5",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.625,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t6",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.63,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t7",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.635,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t8",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.64,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t9",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.645,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t10",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.65,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t11",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.655,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t12",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.66,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t13",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.665,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t14",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.67,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t15",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.675,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t16",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.68,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t17",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.685,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t18",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.69,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t19",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.695,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t20",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.7,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t21",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.705,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t22",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.71,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t23",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.715,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t24",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.72,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t25",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.725,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t26",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.73,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t27",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.735,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t28",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.74,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t29",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.745,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t30",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.75,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t31",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.755,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t32",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.76,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t33",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.765,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t34",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.77,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t35",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.775,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t36",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.78,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t37",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.785,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t38",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.79,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  },
+  {
+   "name": "t39",
+   "success": true,
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.795,
+     "threshold": 0.5,
+     "success": true
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,17 @@
+{
+ "testCases": [
+  {
+   "name": "t0",
+   "metricsData": [
+    {
+     "name": "AnswerRelevancy",
+     "score": 0.8
+    },
+    {
+     "name": "Faithfulness",
+     "score": 0.3
+    }
+   ]
+  }
+ ]
+}

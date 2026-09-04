@@ -1,0 +1,16 @@
+{
+ "version": 3,
+ "results": {
+  "results": [
+   {
+    "testCase": {
+     "description": "c0"
+    },
+    "namedScores": {
+     "accuracy": 0.9,
+     "tone": 0.4
+    }
+   }
+  ]
+ }
+}

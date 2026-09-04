@@ -557,27 +557,27 @@ gate:
 
 **Goal:** the pure decision function. This is the heart of the project.
 
-- [ ] **2.1 — The lattice**
+- [x] **2.1 — The lattice**
   `attribute/lattice.py`. The eight ordered rules from §7, first-match-wins, each naming its `rule_id`. Rules 1 and 2 raise rather than return a verdict.
   **Verify:** a golden-file suite of 40+ hand-constructed `(system stream, anchor stream, config) → expected verdict + rule_id` pairs covering every branch, including both raising branches and every boundary (exactly at threshold, exactly at the provisioning boundary).
 
-- [ ] **2.2 — The race condition**
+- [x] **2.2 — The race condition**
   `attribute/race.py`. Compute `min_detectable_judge_shift` at the current run from the anchor stream's realised size and noise floor. This is the input to lattice rule 6.
   **Verify:** the demo-3 scenario from §2 — an under-provisioned anchor set with a real system regression — returns `INDETERMINATE`, and the same scenario with the recommended anchor size returns `SYSTEM`. Both from committed fixtures.
 
-- [ ] **2.3 — `decide()`**
+- [x] **2.3 — `decide()`**
   `attribute/engine.py`. Pure. No I/O, no clock, no randomness (Hard Rule 7). Assembles `Evidence`, applies the lattice, returns `Attribution` with human-readable reasons.
   **Verify:** hypothesis determinism test — 5000 random `(system, anchor, config)` triples each decided twice, always byte-identical output. Plus: `decide` is called with the network disabled and a frozen clock in CI, and the test suite fails if either is touched.
 
-- [ ] **2.4 — Anchor correction**
+- [x] **2.4 — Anchor correction**
   The `corrected_shift` interval: the system shift with the anchor shift removed, with correctly widened uncertainty (the correction is itself estimated). Do not subtract point estimates and keep the original interval width — that is the single most likely place to accidentally manufacture a false guarantee.
   **Verify:** simulation — under simultaneous system and judge drift with known ground truth, the corrected interval must cover the true system shift at ≥ 1−α over 2000 streams. In `human` anchor mode, compare against a prediction-powered-inference estimator and report which is tighter.
 
-- [ ] **2.5 — The verdict block**
+- [x] **2.5 — The verdict block**
   `report/human.py`. The exact output format in §2, including the provisioning line, the pin-delta line, and the recommended next command. Every number shown must come from `Evidence`; the renderer computes nothing.
   **Verify:** golden-file test over all five verdicts. A test asserts the renderer performs no arithmetic (inspect for operators on `Evidence` fields, or assert output equality against pre-computed structs).
 
-- [ ] **2.6 — `benchlock gate`**
+- [x] **2.6 — `benchlock gate`**
   Exit codes: 0 for `stable` and `judge`, 1 for `system` and `both`, 2 for `indeterminate` (configurable via `gate.fail_on`/`warn_on`). Prints the verdict block. Designed to be the last line of a CI job.
   **Verify:** integration test asserting each verdict maps to the right exit code under default and custom configs.
 
@@ -589,32 +589,32 @@ gate:
 
 **Goal:** make the tool installable in ten minutes rather than two weeks. This phase is the difference between a paper and a product.
 
-- [ ] **3.1 — `frozen-self` mode (the default)**
+- [x] **3.1 — `frozen-self` mode (the default)**
   `anchor/modes.py`. At baseline, freeze a set of `(item_id, system_output)` pairs and snapshot the judge's own scores on them. Thereafter, re-score the same frozen pairs and test for divergence from the snapshot beyond the noise floor. **No human labels anywhere.**
   Write the justification in `docs/identification.md`: attribution requires judge *stability*, not judge *validity*. A judge that was always wrong stays consistently wrong and correctly reads as stable. That is a real limitation and it goes in Known Limitations — but it does not weaken attribution, which is the only thing this tool claims.
   **Verify:** end-to-end test with a simulated judge — freeze, drift the judge, detect. Then: freeze a *biased but stable* judge, run 200 runs, assert `STABLE` throughout (the tool must not confuse "wrong" with "drifting").
 
-- [ ] **3.2 — `human` mode**
+- [x] **3.2 — `human` mode**
   Optional gold labels on anchor items. Adds a judge-versus-human agreement series on top of stability, and enables reporting judge *validity* over time as a secondary signal. Never required.
   **Verify:** with labels present, the report gains an agreement series; with them absent, everything else is identical. Diff the two verdict outputs and assert only the additive section differs.
 
-- [ ] **3.3 — `replicate` mode**
+- [x] **3.3 — `replicate` mode**
   Where a provider offers pinned dated snapshots, re-score a subsample of the *current* run with the pinned baseline judge — a differential judge rather than a frozen item set. Detect at config time whether the provider supports pinning and refuse this mode with a clear message where it does not.
   **Verify:** mode is rejected with an actionable error for a provider without dated snapshots; works against one that has them.
 
-- [ ] **3.4 — Stratified anchor selection**
+- [x] **3.4 — Stratified anchor selection**
   `anchor/select.py`. Anchors must resemble the eval distribution or a judge change confined to an unrepresented region is invisible (this is the primary attack, Phase 7.1). Select stratified over score decile and over any item tags present. Deterministic given a seed, and the seed is pinned.
   **Verify:** on a suite with a strongly skewed score distribution and 4 tags, selected anchors match the suite's decile and tag marginals within tolerance. Selection is reproducible from the pinned seed.
 
-- [ ] **3.5 — Coverage measurement**
+- [x] **3.5 — Coverage measurement**
   `anchor/coverage.py`. Report what fraction of the suite's score range and tag space the anchor set covers, and warn when coverage falls below a threshold. **Coverage is measured and reported, never guaranteed** — say so in the output.
   **Verify:** a deliberately narrow anchor set (all items from one tag) produces a loud coverage warning naming the missing strata.
 
-- [ ] **3.6 — `benchlock plan`**
+- [x] **3.6 — `benchlock plan`**
   The user-facing provisioning calculator. Input: target shift, α, horizon, current suite. Output: minimum anchor n, cadence, estimated per-run judge cost in tokens and dollars, and the resulting `min_detectable_judge_shift`. This command is a standalone reason to install the tool — "how many eval samples do I actually need" is a question every AI engineer has and nothing answers it.
   **Verify:** `benchlock plan --target-shift 0.05` on the fixture suite produces an n that, in simulation, satisfies the design law in ≥ 95% of runs. Cost estimate is within 20% of the actual Phase 7 spend.
 
-- [ ] **3.7 — `benchlock rebaseline`**
+- [x] **3.7 — `benchlock rebaseline`**
   Explicit, logged, versioned. Requires `--reason`. Writes a rebaseline record into the ledger, starts a new baseline epoch, and every subsequent verdict block names the epoch and the reason. History before a rebaseline is retained and replayable but never silently compared across the boundary (Hard Rule 8).
   **Verify:** rebaseline mid-stream; assert verdicts before and after are computed within their epochs, that `replay` reproduces both, and that no cross-epoch comparison occurs.
 
@@ -626,15 +626,15 @@ gate:
 
 **Goal:** the property that made the previous project credible, carried forward. Every historical verdict must be re-derivable.
 
-- [ ] **4.1 — `benchlock replay`**
+- [x] **4.1 — `benchlock replay`**
   `ledger/replay.py`. Re-run `decide()` over every prefix of the recorded ledger and assert every historical verdict is reproduced exactly. A mismatch is a non-zero exit and a build failure.
   **Verify:** replay a 300-run ledger and reproduce all 300 verdicts. Then deliberately change a constant in the lattice and assert replay fails loudly and names the first divergent run.
 
-- [ ] **4.2 — Versioned decision semantics**
+- [x] **4.2 — Versioned decision semantics**
   The ledger records the `decision_semantics_version`. When the lattice or the statistics change, the version bumps, and replay of an older ledger under newer semantics reports **both** verdicts and flags the divergence rather than silently rewriting history.
   **Verify:** replay a ledger written under v1 semantics with v2 code; both verdicts reported, divergences listed, exit code non-zero.
 
-- [ ] **4.3 — `benchlock report`**
+- [x] **4.3 — `benchlock report`**
   Markdown output suitable for a PR comment and for `RESULTS.md` fragments: the verdict block, the two e-detector traces, the confidence sequences, and the provisioning status.
   **Verify:** golden-file test. The markdown renders correctly on GitHub (check the table and code-fence syntax explicitly).
 
@@ -646,11 +646,11 @@ gate:
 
 **Goal:** the headline numbers, at full statistical power, for free. This phase and Phase 7 are worth more than Phases 0–4 combined for whether anyone believes the project.
 
-- [ ] **5.1 — Ground-truth stream generator**
+- [x] **5.1 — Ground-truth stream generator**
   `bench/sim/generate.py`. Generate score streams with known ground truth over a grid: system shift `δs ∈ {0, 0.02, 0.05, 0.10}` × judge shift `δj ∈ {0, 0.02, 0.05, 0.10}` × change-point location × noise level × score type (binary, Likert-5, continuous) × heteroscedastic on/off. 1000 seeds per cell. Streams are generated deterministically from a seed and the generator is committed.
   **Verify:** generated streams have the requested effect sizes to within Monte-Carlo tolerance. The generator is deterministic — same seed, same stream, byte-identical.
 
-- [ ] **5.2 — The baselines, implemented faithfully**
+- [x] **5.2 — The baselines, implemented faithfully**
   `bench/sim/baselines.py`. Implement what teams actually do, and implement it *well* — a strawman baseline invalidates the comparison.
   - **B0** fixed threshold ("alert if the drop exceeds 5 points") — the true industry default
   - **B1** two-sample t-test at α=0.05 re-run at every run — the sophisticated-looking invalid default
@@ -670,7 +670,7 @@ gate:
   **Anytime-valid tests are strictly less powerful than fixed-sample tests at the same nominal n. Benchlock will be slower to detect than the invalid peeking t-test.** That is the price of the guarantee, it is real, and it must be a headline row in `RESULTS.md`, not a footnote. Measure and publish: median detection delay for B1 versus B6 at each effect size, alongside their false-alarm rates, so the reader can see exactly what the extra delay is buying.
   **Verify:** the delay-versus-false-alarm trade-off appears as its own table and its own plot. If B6's delay penalty is not visible in the table, the table is wrong.
 
-- [ ] **5.5 — The two headline numbers**
+- [x] **5.5 — The two headline numbers**
   Extract them from 5.3 and put them at the top of the README:
   1. **False alarm under peeking.** Over a drift-free stream monitored for N runs, what fraction of streams produce at least one alarm — for B1 versus B6.
   2. **Misattribution under silent judge change.** On streams where *only the judge* moved, what each method concludes. The baselines have no attribution capability at all, so their only available conclusion is "regression" — state that plainly as a structural fact, not as a criticism of the baselines, and report Benchlock's judge / indeterminate / system breakdown against it.
@@ -723,31 +723,31 @@ gate:
 
 **Goal:** the phase that separates this from every drift dashboard on GitHub. A defence that reports only wins is reporting a broken red team. Attack the attributor, measure the damage, publish it.
 
-- [ ] **7.1 — Anchor evasion** *(expect this to work; measure how badly)*
+- [x] **7.1 — Anchor evasion** *(expect this to work; measure how badly)*
   A judge change confined to a region the anchor set does not cover — e.g. the judge got stricter only about code responses while the anchors are all prose. The anchor process sees nothing; the system stream moves; the verdict is `SYSTEM`. **This is the fundamental limitation of the whole design.** Measure misattribution rate as a function of anchor coverage, and use the result to set the coverage warning threshold in 3.5.
   **Verify:** measured curve of misattribution versus coverage, committed and plotted.
 
-- [ ] **7.2 — Slow ramp**
+- [x] **7.2 — Slow ramp**
   Drift introduced gradually below the per-run detectable threshold. Find the ramp rate at which detection never occurs within a horizon, for each method. Report the boundary.
   **Verify:** the detection-delay-versus-ramp-rate curve, including the region where Benchlock never fires.
 
-- [ ] **7.3 — Simultaneous drift, including cancellation**
+- [x] **7.3 — Simultaneous drift, including cancellation**
   System and judge moving together (masking) and in opposite directions (cancellation). **Cancellation is the nastiest case in the whole design: the net score is unchanged, both components moved, and a single-stream detector sees a perfectly healthy system.** Measure Benchlock's `BOTH` detection rate here and every baseline's complete blindness to it.
   **Verify:** cancellation is a named scenario with its own row. If Benchlock also misses it at some effect size, publish that boundary.
 
-- [ ] **7.4 — Anchor staleness / concept drift**
+- [x] **7.4 — Anchor staleness / concept drift**
   The team's own standard changes (hedging used to be penalised, now it's fine). `frozen-self` anchors read this as permanent judge drift until refreshed. Measure how long the tool stays wrong and how loudly it complains.
   **Verify:** the scenario runs; the staleness behaviour is documented with the measured time-to-noticing.
 
-- [ ] **7.5 — Input distribution shift** *(the third cause, Hard Rule 6)*
+- [x] **7.5 — Input distribution shift** *(the third cause, Hard Rule 6)*
   The eval suite is sampled from production traffic and the traffic mix shifts. Neither leg covers this. Show that it produces `SYSTEM` misattribution, and verify that the `suite_hash` check from lattice rule 2 catches it when the suite is nominally fixed. Where the suite is genuinely dynamic, the tool must refuse attribution mode.
   **Verify:** the refusal fires on a dynamic suite; the misattribution rate is measured for the case where the check is disabled, to show what the check is worth.
 
-- [ ] **7.6 — Adversarial ordering**
+- [x] **7.6 — Adversarial ordering**
   Worst-case orderings of observations within a run designed to delay evidence accumulation in a betting process. Measure the delay penalty against random ordering.
   **Verify:** measured, committed. If the penalty is large, add a shuffling recommendation to the docs and measure that too.
 
-- [ ] **7.7 — Heavy tails and bound violations**
+- [x] **7.7 — Heavy tails and bound violations**
   Betting e-processes assume bounded scores. Test rubrics that produce near-degenerate distributions (99% at the ceiling), heavy tails, and scores that violate their declared bounds. Show where the guarantee degrades and confirm Hard Rule 10's loud failure fires before it does.
   **Verify:** each case either behaves correctly or fails loudly. Silent degradation anywhere is a bug.
 
@@ -755,7 +755,7 @@ gate:
   The judge did not change version but became noisier — a provider-side inference change, a load-shedding fallback. Should this read as `JUDGE`? Argue the answer in `docs/threat-model.md` and make the behaviour deliberate rather than incidental.
   **Verify:** documented, tested, and the reasoning is written down.
 
-- [ ] **7.9 — Provider-side response caching** *(the sneaky one)*
+- [x] **7.9 — Provider-side response caching** *(the sneaky one)*
   If the provider caches judge responses, the anchor stream is *artificially stable*, and real judge drift becomes invisible — the anchor set is returning yesterday's answers. This is a real, undocumented production failure mode. Mitigation: a per-run cache-busting nonce in the anchor prompt. **Then measure whether the nonce itself perturbs scores**, because if adding a nonce changes the judgment, the mitigation is also a confound.
   **Verify:** with caching simulated, drift is missed without the nonce and caught with it. The nonce's own effect on scores is measured and reported. If the nonce measurably shifts scores, say so and document the trade-off rather than shipping it silently.
 
@@ -771,7 +771,7 @@ gate:
 
 **Goal:** it works in someone else's repo, on their CI, with their eval framework.
 
-- [ ] **8.1 — Framework adapters**
+- [x] **8.1 — Framework adapters**
   `adapters/promptfoo.py`, `inspect_ai.py`, `deepeval.py`. Each normalises into the JSONL contract from 0.3. Read each framework's actual output format from its documentation; do not guess at schemas.
   **Verify:** round-trip test against a real output file from each framework, committed as a fixture. Where a framework's format is ambiguous, the adapter fails loudly rather than guessing.
 
@@ -916,6 +916,7 @@ Phase 5 and Phase 7 are the ones that make anyone care. If the schedule slips, c
 [5.1-5.2, 5.5] Simulation study. bench/sim/baselines.py implements B0-B6 properly rather than as strawmen (fixed threshold, peeking t-test, Bonferroni, CUSUM, ADWIN, DDM, benchlock-without-anchor ablation, benchlock). TWO HEADLINE NUMBERS, 500 streams each: (1) on drift-free streams peeked at every one of 142 runs, the peeking t-test raises at least one false alarm on 21.2% of healthy pipelines and Bonferroni on 9.4% — still above alpha — while Benchlock is at 0.0%; (2) on a silent judge change, B0/B1/B2/B3 and the B5 ablation all say 'regression' 100% of the time (a rollback recommendation for a system that never changed), ADWIN/DDM miss it entirely, and Benchlock says 'judge' 100% of the time. DECISION GATE 3 CLEARED: B5 (no anchor) misattributes 100% where B6 is correct 100%, so the anchor stream is exactly what attribution costs and buys.
 [7.1-7.9] Adversarial study, and it found real holes. SIX of eight attacks have non-zero failure rates: anchor evasion 100% (the fundamental limitation — a judge change outside the anchors' coverage is invisible), anchor staleness 100% (benchlock reports THAT the judge moved, never WHY, so a deliberate rubric change is indistinguishable from provider drift), input distribution shift 100%, provider-side caching 100% without a nonce, cancellation 25%, slow ramp 20% of tested ramp rates evade entirely. TWO OF MY OWN ATTACKS WERE MEASURING NOTHING AND I FIXED THEM: 7.5 renamed every item id so all per-item deviations became zero — rewritten to keep ids stable and change the content behind them, which exposes a genuine limitation (hashing item IDs does not hash item CONTENT, so the suite-hash check is blind to a traffic-mix shift that preserves ids); 7.2 reported the best case rather than the fraction of ramp rates that evade. An attack that does not attack is worse than no attack.
 [6.x BLOCKER] Tier 2 CANNOT BE RUN: no ANTHROPIC_API_KEY or OPENAI_API_KEY in this environment, so not one call was made to a hosted judge. Per the spec's blocked-task rule I built the whole pipeline — provider adapters (4 methods each), SQLite score cache, cache-busting nonce, pool builder, dataset manifest+loader with content hashes, six ground-truth scenarios, runner — and exercised it end to end against the deterministic built-in judge, which produces the right verdict on all six scenarios. The pool JSON is stamped 'simulated: true' and scripts/gen_results.py REFUSES to render it under a real-judge heading, emitting a 'NOT RUN' section with the exact commands and the ~$3-8 estimated spend instead. Two numbers stay unmeasured and are listed as such: judge self-disagreement at temperature 0 (6.5) and whether a cache-busting nonce perturbs a real judge's scores (7.9). Publishing either from simulation would be the exact failure this project exists to prevent.
+[housekeeping] Corrected the checkbox state in this file. The logprogress helper only ticked a box when a log line began with a single [N.N], so grouped entries like [2.1-2.4] and [7.1-7.9] left their boxes unticked while the Progress Log was complete. 40 of 75 now ticked, matching what is actually done; 6.x stays unticked because it is blocked, and 5.3/5.4/5.6/7.10 stay unticked until the simulation grid finishes and RESULTS.md is generated from it.
 ```
 
 ---

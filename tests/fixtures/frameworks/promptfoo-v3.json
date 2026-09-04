@@ -1,0 +1,571 @@
+{
+ "version": 3,
+ "timestamp": "2026-09-04T00:00:00Z",
+ "results": {
+  "prompts": [],
+  "providers": [],
+  "stats": {},
+  "results": [
+   {
+    "testCase": {
+     "description": "case-0",
+     "vars": {
+      "q": "q0"
+     }
+    },
+    "score": 0.5,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.5
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-1",
+     "vars": {
+      "q": "q1"
+     }
+    },
+    "score": 0.51,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.51
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-2",
+     "vars": {
+      "q": "q2"
+     }
+    },
+    "score": 0.52,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.52
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-3",
+     "vars": {
+      "q": "q3"
+     }
+    },
+    "score": 0.53,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.53
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-4",
+     "vars": {
+      "q": "q4"
+     }
+    },
+    "score": 0.54,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.54
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-5",
+     "vars": {
+      "q": "q5"
+     }
+    },
+    "score": 0.55,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.55
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-6",
+     "vars": {
+      "q": "q6"
+     }
+    },
+    "score": 0.56,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.56
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-7",
+     "vars": {
+      "q": "q7"
+     }
+    },
+    "score": 0.57,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.57
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-8",
+     "vars": {
+      "q": "q8"
+     }
+    },
+    "score": 0.58,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.58
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-9",
+     "vars": {
+      "q": "q9"
+     }
+    },
+    "score": 0.59,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.59
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-10",
+     "vars": {
+      "q": "q10"
+     }
+    },
+    "score": 0.6,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.6
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-11",
+     "vars": {
+      "q": "q11"
+     }
+    },
+    "score": 0.61,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.61
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-12",
+     "vars": {
+      "q": "q12"
+     }
+    },
+    "score": 0.62,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.62
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-13",
+     "vars": {
+      "q": "q13"
+     }
+    },
+    "score": 0.63,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.63
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-14",
+     "vars": {
+      "q": "q14"
+     }
+    },
+    "score": 0.64,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.64
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-15",
+     "vars": {
+      "q": "q15"
+     }
+    },
+    "score": 0.65,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.65
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-16",
+     "vars": {
+      "q": "q16"
+     }
+    },
+    "score": 0.66,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.66
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-17",
+     "vars": {
+      "q": "q17"
+     }
+    },
+    "score": 0.67,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.67
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-18",
+     "vars": {
+      "q": "q18"
+     }
+    },
+    "score": 0.68,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.68
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-19",
+     "vars": {
+      "q": "q19"
+     }
+    },
+    "score": 0.69,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.69
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-20",
+     "vars": {
+      "q": "q20"
+     }
+    },
+    "score": 0.7,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.7
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-21",
+     "vars": {
+      "q": "q21"
+     }
+    },
+    "score": 0.71,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.71
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-22",
+     "vars": {
+      "q": "q22"
+     }
+    },
+    "score": 0.72,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.72
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-23",
+     "vars": {
+      "q": "q23"
+     }
+    },
+    "score": 0.73,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.73
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-24",
+     "vars": {
+      "q": "q24"
+     }
+    },
+    "score": 0.74,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.74
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-25",
+     "vars": {
+      "q": "q25"
+     }
+    },
+    "score": 0.75,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.75
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-26",
+     "vars": {
+      "q": "q26"
+     }
+    },
+    "score": 0.76,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.76
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-27",
+     "vars": {
+      "q": "q27"
+     }
+    },
+    "score": 0.77,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.77
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-28",
+     "vars": {
+      "q": "q28"
+     }
+    },
+    "score": 0.78,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.78
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-29",
+     "vars": {
+      "q": "q29"
+     }
+    },
+    "score": 0.79,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.79
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-30",
+     "vars": {
+      "q": "q30"
+     }
+    },
+    "score": 0.8,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.8
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-31",
+     "vars": {
+      "q": "q31"
+     }
+    },
+    "score": 0.81,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.81
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-32",
+     "vars": {
+      "q": "q32"
+     }
+    },
+    "score": 0.82,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.82
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-33",
+     "vars": {
+      "q": "q33"
+     }
+    },
+    "score": 0.83,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.83
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-34",
+     "vars": {
+      "q": "q34"
+     }
+    },
+    "score": 0.84,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.84
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-35",
+     "vars": {
+      "q": "q35"
+     }
+    },
+    "score": 0.85,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.85
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-36",
+     "vars": {
+      "q": "q36"
+     }
+    },
+    "score": 0.86,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.86
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-37",
+     "vars": {
+      "q": "q37"
+     }
+    },
+    "score": 0.87,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.87
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-38",
+     "vars": {
+      "q": "q38"
+     }
+    },
+    "score": 0.88,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.88
+    }
+   },
+   {
+    "testCase": {
+     "description": "case-39",
+     "vars": {
+      "q": "q39"
+     }
+    },
+    "score": 0.89,
+    "success": true,
+    "gradingResult": {
+     "pass": true,
+     "score": 0.89
+    }
+   }
+  ]
+ }
+}
