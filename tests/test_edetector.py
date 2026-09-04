@@ -70,6 +70,7 @@ def test_pruning_can_only_delay_detection(xs: list[float], max_candidates: int) 
 
 
 @pytest.mark.mandatory
+@pytest.mark.slow
 def test_pruning_property_over_three_thousand_streams() -> None:
     """The spec's 3000-case sweep, over shapes chosen to stress the pruning rule.
 
@@ -127,23 +128,37 @@ def test_reweighting_survivors_upward_would_break_the_guarantee() -> None:
     If a prune redistributed the dropped mass onto the survivors, the bounded statistic
     could exceed full memory. We do not do that; this asserts the test would notice.
     """
+    from benchlock.stats.edetector import ReferenceEDetector
+
     null = wide_null()
     xs = [0.98] * 12
 
-    bounded = EDetector(null, ALPHA_M, max_candidates=2)
-    full = EDetector(null, ALPHA_M, max_candidates=None)
+    bounded = ReferenceEDetector(null, ALPHA_M, max_candidates=2)
+    full = ReferenceEDetector(null, ALPHA_M, max_candidates=None)
     bounded.update_many(xs)
     full.update_many(xs)
     assert bounded.log_e <= full.log_e
 
     # Now simulate the forbidden rule: renormalise the survivors' weights to sum to 1.
-    cheating = EDetector(null, ALPHA_M, max_candidates=2)
+    cheating = ReferenceEDetector(null, ALPHA_M, max_candidates=2)
     cheating.update_many(xs)
     survivors = cheating._candidates
     total = math.log(sum(math.exp(c.log_weight) for c in survivors))
     for cand in survivors:
         cand.log_weight -= total  # renormalise upward — the thing Hard Rule 4 forbids
     assert cheating.log_e > full.log_e, "the negative control failed to break the guarantee"
+
+    # And the same rule applied to the vectorised detector breaks it identically.
+    fast = EDetector(null, ALPHA_M, max_candidates=2)
+    fast.update_many(xs)
+    fast_full = EDetector(null, ALPHA_M, max_candidates=None)
+    fast_full.update_many(xs)
+    assert fast.log_e <= fast_full.log_e
+    fast._log_weight[: fast._count] -= math.log(
+        float(np.exp(fast._log_weight[: fast._count]).sum())
+    )
+    fast._log_e_cache = None  # the statistic is cached per update; we just changed inputs
+    assert fast.log_e > fast_full.log_e
 
 
 # --- validity and power --------------------------------------------------------------------
@@ -248,3 +263,90 @@ def test_alarm_time_is_sticky() -> None:
     assert first is not None
     detector.update_many([scale.to_unit(float(rng.normal(0, run_mean_sd))) for _ in range(40)])
     assert detector.alarm_time == first
+
+
+# --- the vectorised detector must be the scalar one, exactly ------------------------------
+
+
+@pytest.mark.parametrize("strategy_name", ["agrapa", "predmix-eb"])
+@pytest.mark.parametrize("max_candidates", [None, 4, 32])
+def test_vectorised_detector_matches_the_scalar_reference(
+    strategy_name: str, max_candidates: int | None
+) -> None:
+    """EDetector is a performance rewrite of ReferenceEDetector and nothing more.
+
+    Checked observation by observation, not just at the end, so a divergence cannot hide
+    inside a stream and cancel out.
+    """
+    from benchlock.stats.betting import make_strategy
+    from benchlock.stats.edetector import ReferenceEDetector
+
+    rng = np.random.default_rng(20260904)
+    for shape in range(6):
+        horizon = 40
+        if shape == 0:
+            xs = rng.uniform(0.4, 0.6, horizon)
+        elif shape == 1:
+            xs = np.concatenate([rng.uniform(0.45, 0.55, 25), rng.uniform(0.8, 1.0, 15)])
+        elif shape == 2:
+            xs = np.concatenate([rng.uniform(0.45, 0.55, 5), rng.uniform(0.0, 0.2, 35)])
+        elif shape == 3:
+            xs = np.where(np.arange(horizon) % 2 == 0, 1.0, 0.0).astype(float)
+        elif shape == 4:
+            xs = np.full(horizon, 0.5)
+        else:
+            xs = np.clip(np.linspace(0.5, 0.05, horizon), 0, 1)
+
+        null = wide_null()
+        fast = EDetector(
+            null, ALPHA_M, max_candidates=max_candidates, strategy=make_strategy(strategy_name)
+        )
+        slow = ReferenceEDetector(
+            null, ALPHA_M, max_candidates=max_candidates, strategy=make_strategy(strategy_name)
+        )
+        for t, x in enumerate(xs.tolist()):
+            fast.update(x)
+            slow.update(x)
+            assert fast.log_e == pytest.approx(slow.log_e, rel=1e-9, abs=1e-9), (
+                f"shape {shape} t={t}: vectorised {fast.log_e} != reference {slow.log_e}"
+            )
+            assert fast.n_candidates == slow.n_candidates
+        assert fast.alarm_time == slow.alarm_time
+        assert fast.best_changepoint == slow.best_changepoint
+        assert fast.direction == slow.direction
+
+
+def test_vectorised_detector_refuses_a_strategy_it_cannot_vectorise() -> None:
+    from benchlock.stats.betting import FixedBet
+
+    with pytest.raises(ValueError, match="ReferenceEDetector"):
+        EDetector(wide_null(), ALPHA_M, strategy=FixedBet(0.3))
+
+
+def test_vectorised_detector_refuses_out_of_range_observations() -> None:
+    detector = EDetector(wide_null(), ALPHA_M)
+    with pytest.raises(ValueError, match=r"outside \[0, 1\]"):
+        detector.update(1.2)
+
+
+def test_vectorised_detector_is_substantially_faster() -> None:
+    """The reason this class exists. Phase 5 decides tens of thousands of streams."""
+    import time
+
+    from benchlock.stats.edetector import ReferenceEDetector
+
+    rng = np.random.default_rng(1)
+    xs = rng.uniform(0.4, 0.6, 200).tolist()
+
+    start = time.perf_counter()
+    EDetector(wide_null(), ALPHA_M, max_candidates=256).update_many(xs)
+    fast_seconds = time.perf_counter() - start
+
+    start = time.perf_counter()
+    ReferenceEDetector(wide_null(), ALPHA_M, max_candidates=256).update_many(xs)
+    slow_seconds = time.perf_counter() - start
+
+    assert fast_seconds < slow_seconds / 5, (
+        f"vectorised {fast_seconds:.3f}s vs reference {slow_seconds:.3f}s — "
+        "the rewrite is not earning its complexity"
+    )
