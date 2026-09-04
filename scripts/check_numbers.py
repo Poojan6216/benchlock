@@ -103,6 +103,11 @@ def main() -> int:
             # the demo regeneration check rather than by number tracing.
             if in_fence or line.lstrip().startswith(("|---", "<!--", "    ")):
                 continue
+            # Citation identifiers are not measurements. The spec marks figures taken from
+            # published research as [cited]; an arXiv id is neither a figure nor a claim.
+            lowered = line.lower()
+            if "arxiv" in lowered or "[cited]" in lowered or "doi.org" in lowered:
+                continue
             for match in NUMBER.finditer(line):
                 value = match.group(1)
                 if value in known:
