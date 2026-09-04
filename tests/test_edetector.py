@@ -192,7 +192,7 @@ def test_a_late_change_is_detected_where_a_fixed_start_process_would_struggle() 
     """The reason for hypothesising a change point at every run."""
     rng = np.random.default_rng(5)
     run_mean_sd = 0.08 / math.sqrt(260)
-    scale = MonitorScale.from_noise_floor(run_mean_sd)
+    scale = MonitorScale.for_target(0.05, run_mean_sd)
     null = frozen_baseline_null(run_mean_sd, 5, ALPHA, scale=scale)
 
     quiet = [scale.to_unit(float(rng.normal(0.0, run_mean_sd))) for _ in range(60)]

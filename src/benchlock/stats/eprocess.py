@@ -147,6 +147,8 @@ class MonitorScale:
         shape. Four was the best of {2, 3, 4, 5, 6, 10} across four anchor/replicate/
         horizon configurations, and 10 — the obvious "safely wide" choice — cost roughly a
         third of the detectable-shift resolution.
+
+        Prefer :meth:`for_target` where the size of the shift you care about is known.
         """
         if run_mean_sd <= 0.0:
             raise ValueError(
@@ -154,6 +156,34 @@ class MonitorScale:
                 "Measure the noise floor with `benchlock baseline` before monitoring"
             )
         return cls(center=0.5, half_width=band_sds * run_mean_sd)
+
+    @classmethod
+    def for_target(
+        cls, target_shift: float, run_mean_sd: float, *, min_sds: float = 4.0
+    ) -> MonitorScale:
+        """Band the stream at the scale of change you actually care about.
+
+        There is a real trade-off in the band width, and neither end wins outright:
+
+        * Narrow gives **resolution** — a small shift is a large move in scaled units, so
+          the bets are not wasted on noise.
+        * Wide gives **evidence per run for a large shift** — a deviation past the band
+          clips, and once clipped the per-run gain is capped by how far the null sits from
+          the boundary, which a wider band improves.
+
+        Sizing the band to the target shift takes both: the target reaches the edge (full
+        evidence when it occurs) while anything smaller still has room to be resolved. The
+        floor at ``min_sds`` standard deviations stops ordinary noise from clipping, which
+        destroys the signal's shape entirely — a band of two SDs detects nothing at all.
+        """
+        if target_shift <= 0.0:
+            raise ValueError(f"target_shift must be positive, got {target_shift}")
+        if run_mean_sd <= 0.0:
+            raise ValueError(
+                f"run_mean_sd must be positive to scale a stream, got {run_mean_sd}. "
+                "Measure the noise floor with `benchlock baseline` before monitoring"
+            )
+        return cls(center=0.5, half_width=max(target_shift, min_sds * run_mean_sd))
 
     def to_unit(self, deviation: float) -> float:
         """Scaled deviation, clipped into [0, 1]."""

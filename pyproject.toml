@@ -98,6 +98,9 @@ ignore = [
 # In a Typer app the command signature *is* the CLI surface: parameters are declared to
 # create flags, and a command that does not read one of its own flags is not a smell.
 "src/benchlock/cli.py" = ["ARG001"]
+# Doc generators are f-string templates of markdown tables; wrapping them would make the
+# generated output harder to read than the source.
+"scripts/*" = ["E501"]
 "tests/*" = ["ANN", "ARG", "B", "E501"]
 "bench/*" = ["ANN", "ARG"]
 

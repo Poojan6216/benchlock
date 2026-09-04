@@ -304,3 +304,23 @@ def test_e_value_and_threshold_are_consistent() -> None:
     assert process.crossed()
     assert process.e_value >= process.threshold
     assert math.isfinite(process.log_e)
+
+
+def test_target_sized_band_takes_the_larger_of_target_and_noise_floor() -> None:
+    """The band expresses the scale of change you care about, floored by the noise."""
+    # A demanding target, well above the noise floor: the target sets the band.
+    wide = MonitorScale.for_target(0.05, 0.005)
+    assert wide.half_width == pytest.approx(0.05)
+    assert wide.to_unit(-0.05) == pytest.approx(0.0), "the target should reach the edge"
+
+    # A target below four standard deviations: the noise floor sets the band instead,
+    # because a band that ordinary noise clips against destroys the signal's shape.
+    narrow = MonitorScale.for_target(0.001, 0.005)
+    assert narrow.half_width == pytest.approx(0.02)
+
+
+def test_target_sized_band_refuses_degenerate_inputs() -> None:
+    with pytest.raises(ValueError, match="target_shift must be positive"):
+        MonitorScale.for_target(0.0, 0.005)
+    with pytest.raises(ValueError, match="run_mean_sd must be positive"):
+        MonitorScale.for_target(0.05, 0.0)
