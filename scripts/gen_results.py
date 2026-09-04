@@ -18,6 +18,19 @@ ROOT = Path(__file__).resolve().parent.parent
 RESULTS = ROOT / "bench" / "results"
 OUT = ROOT / "RESULTS.md"
 
+#: Aggregates computed here — means across grid cells — are written to
+#: `bench/results/summary.json` so that every number in RESULTS.md is itself a committed
+#: artefact, not merely derived from one. Hard Rule 5 is about traceability, and a number
+#: a reader cannot find in the results directory is not traceable.
+AGGREGATES: dict[str, float] = {}
+
+
+def record(key: str, value: float | None) -> float | None:
+    if value is not None:
+        AGGREGATES[key] = value
+    return value
+
+
 METHOD_LABELS = {
     "B0-fixed-threshold": "B0 fixed threshold",
     "B1-peeking-t-test": "B1 peeking t-test",
@@ -124,12 +137,23 @@ def grid_section(sim: dict[str, Any]) -> str:
         stats = by_method.get(name)
         if not stats:
             continue
+        cells = {
+            metric: record(f"grid.{name}.{metric}", mean(stats[metric]))
+            for metric in (
+                "false_alarm",
+                "arl0",
+                "detection",
+                "judge_as_system",
+                "system_as_judge",
+                "indeterminate",
+            )
+        }
         rows.append(
-            f"| {METHOD_LABELS[name]} | {fmt(mean(stats['false_alarm']))} | "
-            f"{fmt(mean(stats['arl0']), '.1f')} | {fmt(mean(stats['detection']), '.2f')} | "
-            f"{fmt(mean(stats['judge_as_system']), '.2f')} | "
-            f"{fmt(mean(stats['system_as_judge']), '.2f')} | "
-            f"{fmt(mean(stats['indeterminate']), '.2f')} |"
+            f"| {METHOD_LABELS[name]} | {fmt(cells['false_alarm'])} | "
+            f"{fmt(cells['arl0'], '.1f')} | {fmt(cells['detection'], '.2f')} | "
+            f"{fmt(cells['judge_as_system'], '.2f')} | "
+            f"{fmt(cells['system_as_judge'], '.2f')} | "
+            f"{fmt(cells['indeterminate'], '.2f')} |"
         )
 
     shifts = sorted({s for m in delays.values() for s in m})
@@ -138,7 +162,9 @@ def grid_section(sim: dict[str, Any]) -> str:
     for name in ORDER:
         if name not in delays:
             continue
-        cells = " | ".join(fmt(mean(delays[name].get(s, [])), ".1f") for s in shifts)
+        cells = " | ".join(
+            fmt(record(f"delay.{name}.{s}", mean(delays[name].get(s, []))), ".1f") for s in shifts
+        )
         delay_rows.append(f"| {METHOD_LABELS[name]} | {cells} |")
 
     return f"""## Tier 1 — simulation study
@@ -180,8 +206,8 @@ def antiresult_section(sim: dict[str, Any], headline: dict[str, Any]) -> str:
         elif row["method"] == "B6-benchlock":
             b6_delay.append(row["median_delay"])
 
-    b1_mean = sum(b1_delay) / len(b1_delay) if b1_delay else float("nan")
-    b6_mean = sum(b6_delay) / len(b6_delay) if b6_delay else float("nan")
+    b1_mean = record("antiresult.b1_mean_delay", sum(b1_delay) / len(b1_delay)) or 0.0
+    b6_mean = record("antiresult.b6_mean_delay", sum(b6_delay) / len(b6_delay)) or 0.0
     b1_fa = headline["stable"]["B1-peeking-t-test"]["alarm_rate"]
     b6_fa = headline["stable"]["B6-benchlock"]["alarm_rate"]
 
@@ -252,7 +278,23 @@ def main() -> int:
         )
 
     OUT.write_text("\n".join(parts))
-    print(f"wrote {OUT.relative_to(ROOT)}")
+    (RESULTS / "summary.json").write_text(
+        json.dumps(
+            {
+                "note": (
+                    "Aggregates computed by scripts/gen_results.py and rendered into "
+                    "RESULTS.md. Committed so that every number in the docs is itself a "
+                    "traceable artefact rather than only derivable from one."
+                ),
+                "command": "uv run python scripts/gen_results.py",
+                "aggregates": AGGREGATES,
+            },
+            indent=1,
+            sort_keys=True,
+        )
+        + "\n"
+    )
+    print(f"wrote {OUT.relative_to(ROOT)} and bench/results/summary.json")
     return 0
 
 

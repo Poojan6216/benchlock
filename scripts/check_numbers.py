@@ -45,7 +45,9 @@ EXEMPT = {
     "2026",
 }
 
-NUMBER = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?)(?![\w.])")
+#: Matches a number, allowing comma thousands separators so "3,000" is read as one value
+#: rather than as "3" followed by an orphan "000".
+NUMBER = re.compile(r"(?<![\w.,])(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)(?![\w.])")
 
 
 def measured_values() -> set[str]:
@@ -110,7 +112,7 @@ def main() -> int:
                 continue
             for match in NUMBER.finditer(line):
                 value = match.group(1)
-                if value in known:
+                if value in known or value.replace(",", "") in known:
                     continue
                 # Trailing-zero renderings: 0.212 measured, "21.2%" written.
                 if value.rstrip("0").rstrip(".") in known:

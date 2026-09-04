@@ -155,16 +155,23 @@ def plot_delay_vs_false_alarm(sim: dict[str, Any], headline: dict[str, Any]) -> 
         )
 
     fig, (left, right) = plt.subplots(1, 2, figsize=(9.5, 3.8))
-    for name in ("B1-peeking-t-test", "B2-bonferroni-t-test", "B6-benchlock"):
+    # B1 and B2 both sit near zero and overlap exactly, so distinct markers and dashes are
+    # what keep the faster method visible rather than hidden under the slower one.
+    styles = {
+        "B1-peeking-t-test": {"marker": "o", "ls": "-", "ms": 7},
+        "B2-bonferroni-t-test": {"marker": "s", "ls": "--", "ms": 5},
+        "B6-benchlock": {"marker": "D", "ls": "-", "ms": 6},
+    }
+    for name, style in styles.items():
         points = sorted(by_method.get(name, {}).items())
         if not points:
             continue
         left.plot(
             [p[0] for p in points],
             [p[1] for p in points],
-            marker="o",
             color=COLOURS[name],
             label=name,
+            **style,
         )
     left.set_xlabel("true system shift")
     left.set_ylabel("median detection delay (runs)")
@@ -173,15 +180,25 @@ def plot_delay_vs_false_alarm(sim: dict[str, Any], headline: dict[str, Any]) -> 
 
     stable = headline["stable"]
     names = ["B1-peeking-t-test", "B2-bonferroni-t-test", "B6-benchlock"]
-    right.bar(
-        range(len(names)),
-        [stable[n]["alarm_rate"] for n in names],
-        color=[COLOURS[n] for n in names],
-    )
+    rates = [stable[n]["alarm_rate"] for n in names]
+    right.bar(range(len(names)), rates, color=[COLOURS[n] for n in names])
     right.axhline(headline["alpha"], color="black", ls="--", lw=1)
+    right.text(
+        len(names) - 0.5,
+        headline["alpha"],
+        f" alpha={headline['alpha']}",
+        va="bottom",
+        ha="right",
+        fontsize=8,
+    )
+    # A zero bar draws nothing, so the value is written above it — otherwise the most
+    # important number on the panel is the one the reader cannot see.
+    for i, rate in enumerate(rates):
+        right.text(i, rate, f" {rate:.3f}", ha="center", va="bottom", fontsize=8)
     right.set_xticks(range(len(names)))
     right.set_xticklabels([n.split("-", 1)[0] for n in names])
     right.set_ylabel("false-alarm rate")
+    right.set_ylim(0, max(rates) * 1.25)
     right.set_title("What that delay buys", fontsize=9)
 
     fig.suptitle(
