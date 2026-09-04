@@ -14,6 +14,7 @@ line of a CI job:
 from __future__ import annotations
 
 import sys
+import time
 from dataclasses import replace
 from pathlib import Path
 from typing import Annotated, NoReturn
@@ -21,6 +22,7 @@ from typing import Annotated, NoReturn
 import typer
 
 from benchlock import __version__
+from benchlock.adapters import Detection, detect_framework
 from benchlock.adapters.jsonl import IngestError
 from benchlock.adapters.jsonl import load as load_jsonl
 from benchlock.config import DEFAULT_CONFIG_NAME, BenchlockConfig, ConfigError, discover_config_path
@@ -101,6 +103,68 @@ def _judge_pin(cfg: BenchlockConfig) -> JudgePin:
     )
 
 
+def _relativise(path: Path, root: Path) -> Path:
+    try:
+        rel = path.resolve().relative_to(root)
+    except ValueError:
+        return path
+    return Path("./") / rel if rel.parts else Path("./")
+
+
+def _render_config(found: Detection) -> str:
+    """Render a commented benchlock.yaml. Comments matter: this is the file a user reads
+    to understand what the tool is asking of them."""
+    scale = found.score_scale or (0.0, 1.0)
+    scale_comment = (
+        f"  # {found.score_scale_note}"
+        if found.score_scale_note
+        else "  # REQUIRED: set this to your rubric's range"
+    )
+    evidence = "\n".join(f"# - {line}" for line in found.evidence)
+    return f"""\
+# Written by `benchlock init`. What it found in this project:
+{evidence}
+version: 1
+
+# The false-alarm budget for the whole monitoring process, not per run.
+alpha: 0.05
+
+# The range your rubric emits. Benchlock normalises to [0,1] internally and keeps the
+# raw value; an out-of-range score is an error, not a clamp.
+score_scale: [{scale[0]:g}, {scale[1]:g}]{scale_comment}
+
+min_runs: 8     # no verdict is attempted before this many runs
+min_obs: 30     # minimum judged items in a run
+
+system:
+  adapter: {found.adapter.value}
+  path: {found.path}
+
+anchor:
+  # The control group: items your system never touches, re-scored by the judge each run.
+  # If these move, only the judge can have moved them.
+  mode: frozen-self           # needs no human labels
+  n: 260                      # size it properly with `benchlock plan --target-shift 0.05`
+  cadence: 1
+  selection: stratified
+  noise_replicates: 5
+  seed: 0
+
+judge:
+  provider: anthropic
+  model: {found.judge_model or "claude-sonnet-4-5-20250929"}
+  rubric: ./evals/rubric.md   # the exact text is hashed into the judge pin
+  params:
+    temperature: 0.0
+    max_tokens: 512
+
+gate:
+  # A judge change must NOT fail your build. It must tell you to re-baseline.
+  fail_on: [system, both]
+  warn_on: [indeterminate]
+"""
+
+
 def _todo(task: str, phase: str) -> NoReturn:
     """A subcommand whose backend lands in a later phase. Never silently no-ops."""
     _die(
@@ -138,7 +202,50 @@ def init(
     force: Annotated[bool, typer.Option("--force", help="Overwrite (a backup is kept).")] = False,
 ) -> None:
     """Detect your eval framework and write a pre-filled benchlock.yaml."""
-    _todo("init", "Phase 0.6")
+    root = directory.resolve()
+    if not root.is_dir():
+        _die(f"{directory} is not a directory", "point `benchlock init` at your eval project")
+
+    found = detect_framework(root)
+    # Paths are written relative to the project so the config stays valid once committed.
+    found = replace(found, path=_relativise(found.path, root))
+    target = root / DEFAULT_CONFIG_NAME
+
+    if target.exists():
+        # Never overwrite without a byte-for-byte backup, even with --force.
+        stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+        backup = target.with_suffix(f".yaml.{stamp}.bak")
+        backup.write_bytes(target.read_bytes())
+        typer.echo(f"backed up existing config to {backup.name}")
+        if not force:
+            _die(
+                f"{DEFAULT_CONFIG_NAME} already exists",
+                f"a backup was written to {backup.name}; re-run with --force to replace it",
+            )
+
+    text = _render_config(found)
+    # A generated config that does not parse is worse than none at all.
+    try:
+        BenchlockConfig.parse(text, source=str(target))
+    except ConfigError as exc:  # pragma: no cover - guards a template regression
+        _die("generated config failed its own validation", exc.render())
+    target.write_text(text, encoding="utf-8")
+
+    typer.echo(f"wrote {target.relative_to(Path.cwd()) if root == Path.cwd() else target}")
+    for line in found.evidence:
+        typer.echo(f"  - {line}")
+    if found.score_scale_note:
+        typer.secho(f"  ! score_scale {found.score_scale_note}", fg=typer.colors.YELLOW)
+    if not found.confident:
+        typer.secho(
+            "  ! no eval framework was detected — set `system.path` to your score output",
+            fg=typer.colors.YELLOW,
+        )
+    typer.echo("")
+    typer.echo("next:")
+    typer.echo("  1. confirm `score_scale` matches your rubric's range")
+    typer.echo("  2. point `judge.rubric` at your rubric/system prompt")
+    typer.echo("  3. benchlock plan --target-shift 0.05    # size the anchor set")
 
 
 @app.command()
