@@ -86,6 +86,15 @@ jobs:
       - run: uv sync
       - run: uv run python scripts/check_numbers.py
 
+  # Hand edits to generated docs, or generator changes never re-run, fail here.
+  generated-docs-match-generators:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - run: uv run python scripts/check_generated.py
+
   # Benchlock gating its own repository, on its own fixture streams.
   dogfood:
     runs-on: ubuntu-latest
