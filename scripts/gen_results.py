@@ -208,6 +208,7 @@ def antiresult_section(sim: dict[str, Any], headline: dict[str, Any]) -> str:
 
     b1_mean = record("antiresult.b1_mean_delay", sum(b1_delay) / len(b1_delay)) or 0.0
     b6_mean = record("antiresult.b6_mean_delay", sum(b6_delay) / len(b6_delay)) or 0.0
+    record("antiresult.delay_ratio", (b6_mean / b1_mean) if b1_mean else 0.0)
     b1_fa = headline["stable"]["B1-peeking-t-test"]["alarm_rate"]
     b6_fa = headline["stable"]["B6-benchlock"]["alarm_rate"]
 
@@ -421,14 +422,38 @@ Two things are unmeasured until then, and both are listed in the README's limita
 
 
 def _real_section(data: dict[str, Any]) -> str:
+    pool = load("real-pool.json") or {}
+    configs = pool.get("configs", [])
+    config_lines = "\n".join(f"| `{c['key']}` | `{c['model']}` | {c['why']} |" for c in configs)
+    cost = load("cost.json") or {}
     rows = "\n".join(
         f"| {r['scenario']} | {r['truth']} | {METHOD_LABELS.get(r['method'], r['method'])} | "
         f"{r['verdict']} | {'✅' if r['correct'] else '❌'} |"
         for r in data["rows"]
     )
+    provider_note = (
+        f"{len(configs)} configurations ran, all on one provider. The spec asked for a fifth, "
+        "cross-provider configuration; no OpenAI key was available, so that comparison is "
+        "not in these results."
+    )
+    cost_note = (
+        f"Spend: **${cost.get('total_dollars', 0):.2f}** over {cost.get('total_calls', 0):,} "
+        f"scored calls ({cost.get('input_tokens', 0):,} input tokens). "
+        f"{cost.get('failed_calls', 0)} further calls were declined by a safety classifier; "
+        "they were billed, but this run's adapter raised before reading their token counts, "
+        "so their cost is **not** in that figure (corrected for future runs)."
+    )
     return f"""## Tier 2 — real judges
 
 {data["methodology"]}
+
+| configuration | model | what it is |
+|---|---|---|
+{config_lines}
+
+{provider_note}
+
+{cost_note}
 
 | scenario | ground truth | method | verdict | correct |
 |---|---|---|---|---|

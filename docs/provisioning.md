@@ -68,8 +68,9 @@ a bug. `K=5` is the default for a reason.
 
 ## Worked example
 
-A judge with per-item self-disagreement of 0.08, K=5 replicates, a 50-run horizon, and 200
-items per system run:
+A judge with per-item self-disagreement of 0.08, K=5 replicates, a 50-run horizon, and **40**
+items per system run (the smaller system stream is what lets the detectability leg, rather
+than the design-law leg, decide the size):
 
 | target shift | anchor n | what limits it |
 |---|---:|---|

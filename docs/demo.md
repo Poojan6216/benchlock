@@ -50,7 +50,7 @@ $ benchlock verdict
 verdict=system         confidence: anytime-valid at alpha=0.05
   E_anchor    =        0.5   (threshold 40.0, not crossed)
   E_system    =   148208.9   (threshold 40.0, crossed at run 27)
-  E_corrected =     6678.3   (threshold 40.0; the system move with the judge's removed)
+  E_corrected =     5170.3   (threshold 40.0; the system move with the judge's removed)
 
 - the anchor set is stable: +0.001 [CS: -0.063, +0.065]
 - your system moved -0.038 [CS: -0.107, +0.031]
@@ -87,7 +87,7 @@ $ benchlock verdict
 verdict=indeterminate  confidence: anytime-valid at alpha=0.05
   E_anchor    =        0.5   (threshold 40.0, not crossed)
   E_system    =    99145.9   (threshold 40.0, crossed at run 28)
-  E_corrected =        8.1   (threshold 40.0; the system move with the judge's removed)
+  E_corrected =       58.8   (threshold 40.0; the system move with the judge's removed)
 
 - your system score moved, and the anchor set did not
 - BUT the anchor set is under-provisioned: at n=40 the minimum judge shift this anchor process

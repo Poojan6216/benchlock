@@ -2,6 +2,7 @@
  "aggregates": {
   "antiresult.b1_mean_delay": 3.0555555555555554,
   "antiresult.b6_mean_delay": 24.612903225806452,
+  "antiresult.delay_ratio": 8.055131964809386,
   "delay.B0-fixed-threshold.0.02": 14.75,
   "delay.B0-fixed-threshold.0.05": 1.9,
   "delay.B0-fixed-threshold.0.1": 1.625,

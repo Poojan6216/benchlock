@@ -41,11 +41,14 @@ First release.
   guarantee and it is published in `RESULTS.md`, not hidden.
 - Six of eight adversarial strategies beat Benchlock at some rate. They are in
   `docs/threat-model.md`.
+- Against real judges (2,456 calls, $3.05): 5 of 6 scenarios correct, where every
+  single-stream baseline gets 2. A temperature-0 judge disagrees with itself on
+  **18.9%** of identical calls.
 
 ### Not in this release
 
-- **The real-judge study has not been run.** The pipeline is complete and exercised
-  end-to-end, but no hosted judge was ever called, so no real-judge number is reported.
-  See the "Tier 2 — NOT RUN" section of `RESULTS.md`.
-- Judge self-disagreement at temperature 0 is therefore unmeasured.
+- A cross-provider judge configuration. The real-judge study ran four Anthropic
+  configurations; no OpenAI key was available for the fifth.
+- A refusal-rate monitor. The study found a judge's *refusal* rate moves with its
+  configuration (6.7x on a rubric edit) and Benchlock does not watch for it.
 - Multi-judge ensembles and multi-suite portfolios.

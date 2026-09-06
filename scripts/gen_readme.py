@@ -49,6 +49,24 @@ def main() -> int:
     b6_right = judge["B6-benchlock"]["verdicts"].get("judge", 0) / seeds
 
     by_strategy = {r["strategy"]: r for r in attacks["rows"]}
+    nd = load("judge-nondeterminism.json")["rows"][0]
+    refusals = load("judge-refusal-rates.json")
+    by_cfg = {r["config"]: r for r in refusals["per_config"]}
+    real = load("real-latest.json")
+    cost = load("cost.json")
+    b6_real = [r for r in real["rows"] if r["method"] == "B6-benchlock"]
+    b6_real_ok = sum(1 for r in b6_real if r["correct"])
+    baseline_real_ok = max(
+        sum(1 for r in real["rows"] if r["method"] == m and r["correct"])
+        for m in {r["method"] for r in real["rows"]}
+        if m != "B6-benchlock"
+    )
+    summary = load("summary.json")["aggregates"]
+    b1_delay = summary["antiresult.b1_mean_delay"]
+    b6_delay = summary["antiresult.b6_mean_delay"]
+    delay_ratio = summary["antiresult.delay_ratio"]
+    one_in = round(1 / nd["self_disagreement_rate"])
+    attacks_that_work = sum(1 for r in attacks["rows"] if r["failure_rate"] > 0)
     attack_rows = "\n".join(
         f"| {r['strategy']} | {r['description']} | **{r['failure_rate']:.0%}** |"
         for r in sorted(attacks["rows"], key=lambda r: -r["failure_rate"])
@@ -64,6 +82,87 @@ changed underneath you — with a guarantee that survives looking every day.**
 A *bench mark* is a surveyor's fixed reference, cut into stone so every other measurement
 can be taken from it. Benchlock cuts one into your eval pipeline and locks it, so that when
 a number moves you can tell whether the wall shifted or the ruler did.
+
+---
+
+## In plain language
+
+### The pain
+
+You run an AI system. To check it is any good, you keep a set of test questions and have
+**another AI — a "judge" — grade the answers.** It runs on every code change and produces
+one number: a pass rate.
+
+One Tuesday that number drops by twelve points.
+
+The dashboard says **regression**. An engineer spends a week bisecting commits and finds
+nothing — because **nothing in the system changed.** The provider quietly updated the judge
+model behind the same model name. The ruler shrank; the wall never moved.
+
+It cuts both ways:
+
+- **False alarm** — a healthy release is rolled back, or a week goes on hunting a ghost.
+- **Missed alarm** — a real bug ships, because everyone has learned to shrug and say *"the
+  judge is being weird again."*
+
+There is a second, quieter problem underneath. Even a team that runs a proper statistical
+test on each run is **looking at that number every single day**, and statistical tests are
+not built for that. Look often enough and you will eventually see a "significant" result by
+chance alone — flip a coin all afternoon and five heads in a row is guaranteed.
+
+### What nobody could tell you
+
+1. **Did my system get worse, or did the judge change?**
+2. **After two hundred daily glances at this dashboard, how often have I been fooled?**
+
+### What Benchlock adds: a control group
+
+> Freeze a set of answers — say two hundred of them — and never touch them again. Every
+> run, ask the judge to re-grade those exact same frozen answers.
+
+The system under test cannot affect them; they are frozen. So:
+
+| what moved | what it means |
+|---|---|
+| the frozen set | **only the judge can have done it** — do not roll back |
+| the system, and not the frozen set | **the system really regressed** — fail the build |
+| both | **tangled** — Benchlock says so instead of guessing |
+| the frozen set was too small to be sure | **Benchlock refuses to answer** |
+
+The last row is the important one. If the control group was too small to have *noticed* a
+judge change, then "your system broke" is a guess even when it happens to be right.
+Benchlock says `indeterminate` and tells you how many frozen answers you would have needed.
+A tool that is confidently wrong one time in ten is worse than useless in CI, because
+people learn to ignore it.
+
+And instead of ordinary statistics it uses mathematics built for people who peek: the
+guarantee holds *however many times you look*.
+
+### Does it work?
+
+Everything below is measured — the first two by simulation with known ground truth, the
+last two against real judges — with the commands in this repository:
+
+- The everyday approach, a t-test on every commit, **raises a false alarm on
+  {b1_fa:.1%} of perfectly healthy pipelines.** Benchlock: **{b6_fa:.1%}**.
+- When only the judge moved, the everyday approach says "regression"
+  **{b1_wrong:.0%}** of the time. Benchlock says `judge` **{b6_right:.0%}** of the time.
+- **A real judge at its most deterministic setting disagrees with itself
+  {nd["self_disagreement_rate"]:.1%} of the time.** Ask it the identical question twice and
+  one time in {one_in} you get a different score. That is the whole problem, measured.
+- On {len(b6_real)} scenarios built from real judge scores, Benchlock got **{b6_real_ok}**
+  right. The best competing method got {baseline_real_ok}.
+
+### What it costs
+
+**Benchlock is about {delay_ratio:.0f}× slower to spot a real regression** than the
+everyday method — {b6_delay:.1f} runs on average against {b1_delay:.1f}. That is the price of
+a guarantee that survives daily looking, and it is a headline row in
+[RESULTS.md](RESULTS.md), not a footnote. If a false rollback is cheap for you and slow
+detection is expensive, the everyday method is genuinely the better tool.
+
+{attacks_that_work} of the {len(attacks["rows"])} attacks designed against it still work.
+They are published below, with their measured failure rates.
 
 ---
 
@@ -83,7 +182,12 @@ Two more demos, including the one this project actually exists for, are in
 
 ---
 
-## Two numbers
+## Two numbers, from simulation
+
+Both tables below come from **simulated streams** with known ground truth — a generator
+whose judge noise and drift are chosen, so the right answer is known and the false-alarm
+rate can be counted exactly. Real-judge results, which are a separate and smaller study,
+are in the section after this one.
 
 ### 1. Peeking
 
@@ -116,6 +220,29 @@ anyone using it. The middle row is Benchlock with its own control group removed,
 the honest measure of what the anchor set costs and buys.
 
 Full tables, including every baseline and the cases where Benchlock loses, are in
+[RESULTS.md](RESULTS.md).
+
+---
+
+## Against real judges
+
+A smaller study, and a real one: 400 HelpSteer2 items scored by `claude-sonnet-5` and
+`claude-haiku-4-5` under four configurations — {cost["total_calls"]:,} calls, ${cost["total_dollars"]:.2f}.
+
+**A judge at its most deterministic setting disagrees with itself {nd["self_disagreement_rate"]:.1%} of the time.**
+Ask it the identical question twice and one time in five you get a different score. That is
+the noise floor the whole tool is measured against, and it is not zero.
+
+**Editing only the rubric text raised the judge's *refusal* rate {by_cfg["c-strict-rubric"]["vs_baseline_multiple"]}×**
+(from {by_cfg["a-baseline"]["refusal_rate"]:.1%} to {by_cfg["c-strict-rubric"]["refusal_rate"]:.1%} of the same 400 items).
+A refused item leaves the sample silently, and Benchlock does not watch for that — it is
+listed under limitations below.
+
+On six scenarios composed from those real scores, **Benchlock got {b6_real_ok} right; the best
+single-stream baseline got {baseline_real_ok}.** The one Benchlock missed is the configuration change
+that moved refusals rather than scores. The streams are constructed by resampling real judge
+scores, not observed longitudinally, and the system-regression scenarios subtract a fixed
+amount from real scores rather than degrade a real system — both stated in
 [RESULTS.md](RESULTS.md).
 
 ---
@@ -271,6 +398,13 @@ verdict, which together are the difference between a guarantee and a decoration.
   the judge's reasoning effort tripled its refusal rate while barely moving the mean score,
   and Benchlock returned `stable` — one of six real-judge scenarios it gets wrong.
 - **Single judge, single suite, single system.** Ensembles and portfolios are v2.
+- **The promptfoo / Inspect AI / DeepEval adapters were tested against fixtures built from
+  each project's documented output shape, not captured from real runs.** A schema that has
+  drifted from its docs would pass those tests and fail in the field. An unrecognised shape
+  is refused, never guessed at.
+- **The GitHub Action has not been exercised on a real GitHub runner.** CI runs the same CLI
+  sequence directly (`scripts/dogfood.py`); the composite action wrapping it is untested
+  end to end.
 
 ---
 

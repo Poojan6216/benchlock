@@ -10,7 +10,7 @@ Every number here comes from a committed run in `bench/results/` and names the c
 Over 500 drift-free streams, each inspected after **every one** of
 142 runs, at `alpha=0.05`:
 
-- **The peeking t-test raises at least one false alarm on 20.6% of healthy pipelines.**
+- **The peeking t-test raises at least one false alarm on 21.2% of healthy pipelines.**
 - **Benchlock: 0.0%.**
 
 Peeking is not a misuse of the t-test here. It is the workflow — CI runs on every commit,
@@ -32,8 +32,8 @@ criticism of the people using it — and it is exactly the gap the anchor set fi
 | method | false alarm (drift-free) | ARL₀ | says "regression"/"system" | says `judge` | says `indeterminate` | misses it |
 |---|---:|---:|---:|---:|---:|---:|
 | B0 fixed threshold | 0.000 | 142.0 | 100% | 0% | 0% | 0% |
-| B1 peeking t-test | 0.206 | 113.9 | 100% | 0% | 0% | 0% |
-| B2 Bonferroni t-test | 0.086 | 129.9 | 100% | 0% | 0% | 0% |
+| B1 peeking t-test | 0.212 | 114.6 | 100% | 0% | 0% | 0% |
+| B2 Bonferroni t-test | 0.074 | 131.8 | 100% | 0% | 0% | 0% |
 | B3 CUSUM | 0.000 | 142.0 | 100% | 0% | 0% | 0% |
 | B4 ADWIN | 0.000 | 142.0 | 0% | 0% | 0% | 100% |
 | B4 DDM | 0.000 | 142.0 | 1% | 0% | 0% | 99% |
@@ -51,7 +51,7 @@ a bug to be fixed — it is the price of the guarantee.**
 | | B1 peeking t-test | B6 Benchlock |
 |---|---:|---:|
 | mean median detection delay (runs) | 3.1 | 24.6 |
-| false-alarm rate on drift-free streams | 0.206 | 0.000 |
+| false-alarm rate on drift-free streams | 0.212 | 0.000 |
 
 B1 detects a real regression sooner. It also raises a false alarm on 21% of
 perfectly healthy pipelines, and it cannot tell you whether what moved was your system or
@@ -163,11 +163,22 @@ watches scores — so this is a gap, and it is listed as one.
 
 Every refusal was a safety decline; there were 0 API errors in the run.
 
-    uv run python bench/real/build_pool.py --items 400 --anchor-items 200 --replicates 5
+    uv run python bench/real/refusal_rates.py
 
 ## Tier 2 — real judges
 
-Tier 2 streams are **constructed by resampling pooled real judge scores**, not observed longitudinally. A fixed item pool was scored once under each of five judge configurations; the time axis is built by splicing those pools at known change points. That is what makes real judges affordable at this sample size, and it is a real limitation: simulation supplies the statistical power, real judges supply the premise, and neither is a longitudinal production study. We have not run one.
+Tier 2 streams are **constructed by resampling pooled real judge scores**, not observed longitudinally. A fixed item pool was scored once under each judge configuration; the time axis is built by splicing those pools at known change points. Two further constructions must be stated plainly. **The judge-change scenarios are real**: they splice scores that a real judge actually produced under two configurations. **The system-regression scenarios are not**: no degraded system was built, and the 'regression' is a fixed 0.10 subtracted from the baseline judge's real scores (`compose._pool_scores`, the `-degraded` suffix). That tests whether the attribution machinery separates a subtracted shift from a real judge change; it does not test whether a real judge notices a real system regression. Simulation supplies the statistical power, real judges supply the premise, and neither is a longitudinal production study. We have not run one.
+
+| configuration | model | what it is |
+|---|---|---|
+| `a-baseline` | `claude-sonnet-5` | the baseline judge |
+| `b-other-snapshot` | `claude-haiku-4-5` | a different model from the same provider — the snapshot-rotation analogue |
+| `c-strict-rubric` | `claude-sonnet-5` | same model, stricter rubric |
+| `d-effort` | `claude-sonnet-5` | same model and rubric, more reasoning effort |
+
+4 configurations ran, all on one provider. The spec asked for a fifth, cross-provider configuration; no OpenAI key was available, so that comparison is not in these results.
+
+Spend: **$3.05** over 2,456 scored calls (1,572,871 input tokens). 144 further calls were declined by a safety classifier; they were billed, but this run's adapter raised before reading their token counts, so their cost is **not** in that figure (corrected for future runs).
 
 | scenario | ground truth | method | verdict | correct |
 |---|---|---|---|---|
@@ -236,7 +247,7 @@ number is kept in the table with the commit that changed it.
 | 7.5 input distribution shift | the eval suite itself moves, adding a third cause benchlock cannot model | 100% | PARTIALLY DEFENDED. When the item set changes, the suite-hash check refuses 100% of the time. When the ids stay the same and only the questions behind them get harder, the check is blind and 100% become a confident `system` verdict. Hashing item ids does not hash item content, and a fixed suite is an assumption benchlock states but cannot verify |
 | 7.6 adversarial ordering | worst-case ordering of observations within each run | 0% | NEGLIGIBLE — median delay penalty +0.0 runs. The stream is monitored at run level, so within-run ordering cannot starve the bets |
 | 7.7 heavy tails and bound violations | near-degenerate score distributions and out-of-range scores | 0% | DEFENDED — out-of-range scores are refused at ingest rather than clamped, and degenerate distributions produce a conservative verdict rather than a wrong one |
-| 7.9 provider-side response caching | a cached judge returns yesterday's answers, hiding real drift | 100% | DEFENDED by a per-run nonce: drift visible in 0/20 runs without it, 20/20 with it. NOTE: the nonce's measured effect on the mean score here is 0.0000, but that is an artefact of the simulated judge, whose nonce touches only the cache key. Whether a nonce perturbs a real judge's scores is a question only a real judge can answer, and it is measured in Tier 2 |
+| 7.9 provider-side response caching | a cached judge returns yesterday's answers, hiding real drift | 100% | DEFENDED by a per-run nonce: drift visible in 0/20 runs without it, 20/20 with it. NOTE: the nonce's measured effect on the mean score here is 0.0000, but that is an artefact of the simulated judge, whose nonce touches only the cache key. Whether a nonce perturbs a REAL judge's scores is UNMEASURED: Tier 2 used a nonce on every replicate call but never scored the same items with and without one, so the mitigation's own confounding effect is an open question rather than a verified non-issue |
 
     uv run python bench/adversarial/run_adversarial.py --all
 

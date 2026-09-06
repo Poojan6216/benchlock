@@ -10,6 +10,87 @@ a number moves you can tell whether the wall shifted or the ruler did.
 
 ---
 
+## In plain language
+
+### The pain
+
+You run an AI system. To check it is any good, you keep a set of test questions and have
+**another AI — a "judge" — grade the answers.** It runs on every code change and produces
+one number: a pass rate.
+
+One Tuesday that number drops by twelve points.
+
+The dashboard says **regression**. An engineer spends a week bisecting commits and finds
+nothing — because **nothing in the system changed.** The provider quietly updated the judge
+model behind the same model name. The ruler shrank; the wall never moved.
+
+It cuts both ways:
+
+- **False alarm** — a healthy release is rolled back, or a week goes on hunting a ghost.
+- **Missed alarm** — a real bug ships, because everyone has learned to shrug and say *"the
+  judge is being weird again."*
+
+There is a second, quieter problem underneath. Even a team that runs a proper statistical
+test on each run is **looking at that number every single day**, and statistical tests are
+not built for that. Look often enough and you will eventually see a "significant" result by
+chance alone — flip a coin all afternoon and five heads in a row is guaranteed.
+
+### What nobody could tell you
+
+1. **Did my system get worse, or did the judge change?**
+2. **After two hundred daily glances at this dashboard, how often have I been fooled?**
+
+### What Benchlock adds: a control group
+
+> Freeze a set of answers — say two hundred of them — and never touch them again. Every
+> run, ask the judge to re-grade those exact same frozen answers.
+
+The system under test cannot affect them; they are frozen. So:
+
+| what moved | what it means |
+|---|---|
+| the frozen set | **only the judge can have done it** — do not roll back |
+| the system, and not the frozen set | **the system really regressed** — fail the build |
+| both | **tangled** — Benchlock says so instead of guessing |
+| the frozen set was too small to be sure | **Benchlock refuses to answer** |
+
+The last row is the important one. If the control group was too small to have *noticed* a
+judge change, then "your system broke" is a guess even when it happens to be right.
+Benchlock says `indeterminate` and tells you how many frozen answers you would have needed.
+A tool that is confidently wrong one time in ten is worse than useless in CI, because
+people learn to ignore it.
+
+And instead of ordinary statistics it uses mathematics built for people who peek: the
+guarantee holds *however many times you look*.
+
+### Does it work?
+
+Everything below is measured — the first two by simulation with known ground truth, the
+last two against real judges — with the commands in this repository:
+
+- The everyday approach, a t-test on every commit, **raises a false alarm on
+  21.2% of perfectly healthy pipelines.** Benchlock: **0.0%**.
+- When only the judge moved, the everyday approach says "regression"
+  **100%** of the time. Benchlock says `judge` **100%** of the time.
+- **A real judge at its most deterministic setting disagrees with itself
+  18.9% of the time.** Ask it the identical question twice and
+  one time in 5 you get a different score. That is the whole problem, measured.
+- On 6 scenarios built from real judge scores, Benchlock got **5**
+  right. The best competing method got 2.
+
+### What it costs
+
+**Benchlock is about 8× slower to spot a real regression** than the
+everyday method — 24.6 runs on average against 3.1. That is the price of
+a guarantee that survives daily looking, and it is a headline row in
+[RESULTS.md](RESULTS.md), not a footnote. If a false rollback is cheap for you and slow
+detection is expensive, the everyday method is genuinely the better tool.
+
+6 of the 8 attacks designed against it still work.
+They are published below, with their measured failure rates.
+
+---
+
 ## The phantom regression
 
 A team's eval pass rate falls over two weeks. The dashboard flags a regression and the
@@ -43,7 +124,12 @@ Two more demos, including the one this project actually exists for, are in
 
 ---
 
-## Two numbers
+## Two numbers, from simulation
+
+Both tables below come from **simulated streams** with known ground truth — a generator
+whose judge noise and drift are chosen, so the right answer is known and the false-alarm
+rate can be counted exactly. Real-judge results, which are a separate and smaller study,
+are in the section after this one.
 
 ### 1. Peeking
 
@@ -52,8 +138,8 @@ Over 500 drift-free streams, each inspected after **every one** of
 
 | method | raises at least one false alarm on |
 |---|---:|
-| t-test re-run every run | **20.6%** of healthy pipelines |
-| the same, Bonferroni-corrected | **8.6%** |
+| t-test re-run every run | **21.2%** of healthy pipelines |
+| the same, Bonferroni-corrected | **7.4%** |
 | **Benchlock** | **0.0%** |
 
 Peeking is not a misuse of the t-test here — it *is* the workflow. CI runs on every commit
@@ -76,6 +162,29 @@ anyone using it. The middle row is Benchlock with its own control group removed,
 the honest measure of what the anchor set costs and buys.
 
 Full tables, including every baseline and the cases where Benchlock loses, are in
+[RESULTS.md](RESULTS.md).
+
+---
+
+## Against real judges
+
+A smaller study, and a real one: 400 HelpSteer2 items scored by `claude-sonnet-5` and
+`claude-haiku-4-5` under four configurations — 2,456 calls, $3.05.
+
+**A judge at its most deterministic setting disagrees with itself 18.9% of the time.**
+Ask it the identical question twice and one time in five you get a different score. That is
+the noise floor the whole tool is measured against, and it is not zero.
+
+**Editing only the rubric text raised the judge's *refusal* rate 6.67×**
+(from 2.2% to 15.0% of the same 400 items).
+A refused item leaves the sample silently, and Benchlock does not watch for that — it is
+listed under limitations below.
+
+On six scenarios composed from those real scores, **Benchlock got 5 right; the best
+single-stream baseline got 2.** The one Benchlock missed is the configuration change
+that moved refusals rather than scores. The streams are constructed by resampling real judge
+scores, not observed longitudinally, and the system-regression scenarios subtract a fixed
+amount from real scores rather than degrade a real system — both stated in
 [RESULTS.md](RESULTS.md).
 
 ---
@@ -238,6 +347,13 @@ verdict, which together are the difference between a guarantee and a decoration.
   the judge's reasoning effort tripled its refusal rate while barely moving the mean score,
   and Benchlock returned `stable` — one of six real-judge scenarios it gets wrong.
 - **Single judge, single suite, single system.** Ensembles and portfolios are v2.
+- **The promptfoo / Inspect AI / DeepEval adapters were tested against fixtures built from
+  each project's documented output shape, not captured from real runs.** A schema that has
+  drifted from its docs would pass those tests and fail in the field. An unrecognised shape
+  is refused, never guessed at.
+- **The GitHub Action has not been exercised on a real GitHub runner.** CI runs the same CLI
+  sequence directly (`scripts/dogfood.py`); the composite action wrapping it is untested
+  end to end.
 
 ---
 
