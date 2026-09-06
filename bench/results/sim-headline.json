@@ -2,7 +2,7 @@
  "alpha": 0.05,
  "anchor_items": 200,
  "baseline_runs": 8,
- "elapsed_seconds": 452.3,
+ "elapsed_seconds": 441.3,
  "generated_by": "uv run python bench/sim/run_sim.py --headline --seeds 500 --horizon 150",
  "horizon": 150,
  "judge": {
@@ -16,7 +16,7 @@
   },
   "B1-peeking-t-test": {
    "alarm_rate": 1.0,
-   "arl0": 15.176,
+   "arl0": 14.578,
    "single_stream": true,
    "verdicts": {
     "regression": 500
@@ -24,7 +24,7 @@
   },
   "B2-bonferroni-t-test": {
    "alarm_rate": 1.0,
-   "arl0": 16.486,
+   "arl0": 16.828,
    "single_stream": true,
    "verdicts": {
     "regression": 500
@@ -47,17 +47,17 @@
    }
   },
   "B4-ddm": {
-   "alarm_rate": 0.01,
-   "arl0": 140.736,
+   "alarm_rate": 0.006,
+   "arl0": 141.312,
    "single_stream": true,
    "verdicts": {
-    "regression": 5,
-    "stable": 495
+    "regression": 3,
+    "stable": 497
    }
   },
   "B5-benchlock-no-anchor": {
    "alarm_rate": 1.0,
-   "arl0": 33.174,
+   "arl0": 33.104,
    "single_stream": true,
    "verdicts": {
     "regression": 500
@@ -65,7 +65,7 @@
   },
   "B6-benchlock": {
    "alarm_rate": 1.0,
-   "arl0": 33.172,
+   "arl0": 33.104,
    "single_stream": false,
    "verdicts": {
     "judge": 500
@@ -86,21 +86,21 @@
    }
   },
   "B1-peeking-t-test": {
-   "alarm_rate": 0.206,
-   "arl0": 113.912,
+   "alarm_rate": 0.212,
+   "arl0": 114.61,
    "single_stream": true,
    "verdicts": {
-    "regression": 103,
-    "stable": 397
+    "regression": 106,
+    "stable": 394
    }
   },
   "B2-bonferroni-t-test": {
-   "alarm_rate": 0.086,
-   "arl0": 129.934,
+   "alarm_rate": 0.074,
+   "arl0": 131.798,
    "single_stream": true,
    "verdicts": {
-    "regression": 43,
-    "stable": 457
+    "regression": 37,
+    "stable": 463
    }
   },
   "B3-cusum": {

@@ -1,6 +1,6 @@
 {
  "command": "uv run python bench/adversarial/run_adversarial.py --all",
- "elapsed_seconds": 76.0,
+ "elapsed_seconds": 71.7,
  "rows": [
   {
    "description": "a judge change confined to a region the anchor set does not cover",
@@ -21,16 +21,16 @@
       "system_misattribution": 0.6
      },
      "0.5": {
-      "both": 0.975,
+      "both": 1.0,
       "indeterminate": 0.0,
-      "judge": 0.025,
+      "judge": 0.0,
       "stable": 0.0,
       "system_misattribution": 0.0
      },
      "0.75": {
-      "both": 0.25,
+      "both": 0.05,
       "indeterminate": 0.0,
-      "judge": 0.75,
+      "judge": 0.95,
       "stable": 0.0,
       "system_misattribution": 0.0
      },
@@ -81,9 +81,9 @@
       "system": 0.0
      },
      "0.05": {
-      "both": 0.975,
+      "both": 1.0,
       "indeterminate": 0.0,
-      "judge": 0.025,
+      "judge": 0.0,
       "stable_MISSED": 0.0,
       "system": 0.0
      },
@@ -139,7 +139,8 @@
     "cases": {
      "99pct_at_ceiling": "system",
      "out_of_range": "refused at ingest",
-     "zero_variance": "system"
+     "zero_variance": "stable",
+     "zero_variance_then_step": "system"
     }
    },
    "failure_rate": 0.0,
@@ -157,7 +158,7 @@
     "trials": 20
    },
    "failure_rate": 1.0,
-   "status": "DEFENDED by a per-run nonce: drift visible in 0/20 runs without it, 20/20 with it. NOTE: the nonce's measured effect on the mean score here is 0.0000, but that is an artefact of the simulated judge, whose nonce touches only the cache key. Whether a nonce perturbs a real judge's scores is a question only a real judge can answer, and it is measured in Tier 2",
+   "status": "DEFENDED by a per-run nonce: drift visible in 0/20 runs without it, 20/20 with it. NOTE: the nonce's measured effect on the mean score here is 0.0000, but that is an artefact of the simulated judge, whose nonce touches only the cache key. Whether a nonce perturbs a REAL judge's scores is UNMEASURED: Tier 2 used a nonce on every replicate call but never scored the same items with and without one, so the mitigation's own confounding effect is an open question rather than a verified non-issue",
    "strategy": "7.9 provider-side response caching"
   }
  ]

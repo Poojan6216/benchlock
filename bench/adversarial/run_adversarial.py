@@ -472,9 +472,32 @@ def bound_violations() -> AttackResult:
     system, anchor = generate(spec)
     cases["99pct_at_ceiling"] = _verdict(system, anchor)
 
-    # Zero variance everywhere.
-    flat = _retag(system, dict.fromkeys((o.item_id for o in system[0].observations), 0.0))
+    # Zero variance everywhere: every item scores identically in every run. The earlier
+    # version of this case added 0.0 to each score, which is the identity — it "tested"
+    # a stream byte-identical to the normal one and could not have caught anything.
+    flat = [
+        RunRecord(
+            run_id=r.run_id,
+            run_index=r.run_index,
+            kind=r.kind,
+            observations=tuple(
+                Observation(item_id=o.item_id, score=0.75, raw_score=4.0, scale=o.scale)
+                for o in r.observations
+            ),
+            suite_hash=r.suite_hash,
+            judge_pin=r.judge_pin,
+            anchor_pin=r.anchor_pin,
+            epoch=r.epoch,
+        )
+        for r in system
+    ]
     cases["zero_variance"] = _verdict(flat, anchor)
+    # A flat stream that then steps must still be detected, not swallowed by a zero scale.
+    stepped = [
+        *flat[:20],
+        *_retag(flat[20:], dict.fromkeys((o.item_id for o in flat[0].observations), -0.20)),
+    ]
+    cases["zero_variance_then_step"] = _verdict(stepped, anchor)
 
     # A score outside the declared bounds must be refused at ingest, not monitored.
     try:
@@ -555,8 +578,10 @@ def provider_caching(trials: int = 20) -> AttackResult:
             f"without it, {with_nonce}/{trials} with it. NOTE: the nonce's measured effect "
             f"on the mean score here is {nonce_effect:.4f}, but that is an artefact of the "
             "simulated judge, whose nonce touches only the cache key. Whether a nonce "
-            "perturbs a real judge's scores is a question only a real judge can answer, "
-            "and it is measured in Tier 2"
+            "perturbs a REAL judge's scores is UNMEASURED: Tier 2 used a nonce on every "
+            "replicate call but never scored the same items with and without one, so the "
+            "mitigation's own confounding effect is an open question rather than a "
+            "verified non-issue"
         ),
         detail={
             "drift_visible_runs_without_nonce": without_nonce,
@@ -612,10 +637,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         "elapsed_seconds": round(time.time() - started, 1),
         "rows": rows,
     }
-    (RESULTS / "adversarial-latest.json").write_text(
-        json.dumps(payload, indent=1, sort_keys=True) + "\n"
+    # A single-strategy run is for iterating on that strategy. Writing it over the full
+    # results would silently shrink the published table to one row.
+    target = (
+        RESULTS / f"adversarial-only-{args.only}.json"
+        if args.only
+        else RESULTS / "adversarial-latest.json"
     )
-    print(f"\nwrote bench/results/adversarial-latest.json ({payload['elapsed_seconds']}s)")
+    target.write_text(json.dumps(payload, indent=1, sort_keys=True) + "\n")
+    print(f"\nwrote {target.relative_to(ROOT)} ({payload['elapsed_seconds']}s)")
     return 0
 
 

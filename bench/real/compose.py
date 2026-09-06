@@ -246,11 +246,17 @@ def load_pool(path: Path | None = None) -> dict[str, Any]:
 
 METHODOLOGY = (
     "Tier 2 streams are **constructed by resampling pooled real judge scores**, not "
-    "observed longitudinally. A fixed item pool was scored once under each of five judge "
-    "configurations; the time axis is built by splicing those pools at known change "
-    "points. That is what makes real judges affordable at this sample size, and it is a "
-    "real limitation: simulation supplies the statistical power, real judges supply the "
-    "premise, and neither is a longitudinal production study. We have not run one."
+    "observed longitudinally. A fixed item pool was scored once under each judge "
+    "configuration; the time axis is built by splicing those pools at known change "
+    "points. Two further constructions must be stated plainly. **The judge-change "
+    "scenarios are real**: they splice scores that a real judge actually produced under "
+    "two configurations. **The system-regression scenarios are not**: no degraded system "
+    "was built, and the 'regression' is a fixed 0.10 subtracted from the baseline judge's "
+    "real scores (`compose._pool_scores`, the `-degraded` suffix). That tests whether the "
+    "attribution machinery separates a subtracted shift from a real judge change; it does "
+    "not test whether a real judge notices a real system regression. Simulation supplies "
+    "the statistical power, real judges supply the premise, and neither is a longitudinal "
+    "production study. We have not run one."
 )
 
 
