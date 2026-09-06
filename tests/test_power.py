@@ -73,11 +73,40 @@ def test_n_increases_as_alpha_decreases() -> None:
 
 
 def test_n_increases_as_the_horizon_shortens() -> None:
-    sizes = [
-        min_anchor_size(0.02, floor_at(), ALPHA, h, obs_per_run=40) for h in (200, 100, 50, 25)
-    ]
+    sizes = [min_anchor_size(0.02, floor_at(), ALPHA, h, obs_per_run=40) for h in (200, 100, 50)]
     assert sizes == sorted(sizes), f"less time must need more anchors: {sizes}"
     assert sizes[-1] > sizes[0]
+
+
+def test_a_horizon_too_short_for_any_detection_is_refused_and_says_why() -> None:
+    """Below the feasible-horizon floor nothing is provable at any anchor size.
+
+    The old code returned a finite sentinel here that every caller read as a real answer,
+    and `decide()` then issued a confident SYSTEM verdict on a pure judge shift. Now the
+    calculator refuses, names the floor, and says more anchors cannot help.
+    """
+    from benchlock.stats.power import min_feasible_horizon
+
+    floor = min_feasible_horizon(ALPHA)
+    assert floor > 1
+    with pytest.raises(ProvisioningImpossibleError) as excinfo:
+        min_anchor_size(0.02, floor_at(), ALPHA, floor - 1, obs_per_run=40)
+    assert f"fewer than {floor} runs" in excinfo.value.message
+    assert "More anchor items cannot help" in excinfo.value.hint
+
+
+def test_min_detectable_shift_is_infinite_below_the_feasible_horizon() -> None:
+    """Hard Rule 2: an unreachable horizon must read as UNDER_PROVISIONED, never as a number."""
+    from benchlock.attribute.race import check_race
+    from benchlock.model.verdict import Provisioning
+    from benchlock.stats.power import min_feasible_horizon
+
+    short = min_feasible_horizon(ALPHA) - 1
+    assert min_detectable_shift(400, floor_at(), ALPHA, short) == float("inf")
+    race = check_race(-0.30, floor_at(), 400, short, ALPHA, target_shift=0.05)
+    assert race.provisioning is Provisioning.UNDER_PROVISIONED, (
+        "a huge observed shift must not launder an anchor process that could not have crossed"
+    )
 
 
 def test_min_detectable_shift_decreases_as_the_anchor_grows() -> None:

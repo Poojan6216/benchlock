@@ -23,6 +23,7 @@ merely remembered.
 
 from __future__ import annotations
 
+import math
 import statistics
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
@@ -155,7 +156,10 @@ def _monitor_stream(
     saturated = any(z <= 0.0 or z >= 1.0 for z in for_estimate)
     unit_interval = empirical_bernstein_cs(for_estimate, alpha_monitor)[-1]
     return StreamAnalysis(
-        e_value=detector.e_value,
+        # The PEAK, not the endpoint. `crossed_at` is already sticky, so pairing it with
+        # an endpoint e-value let the report say "crossed at run 27" while the lattice
+        # read the same stream as never having crossed.
+        e_value=detector.peak_e_value,
         crossed_at=detector.alarm_time,
         shift=estimate_scale.raw_interval(unit_interval),
         n_monitored=len(deviations),
@@ -240,6 +244,7 @@ def decide(
     # Against a snapshot the only uncertainty is how precisely it was measured,
     # `sd / sqrt(baseline_runs)`, which is two orders of magnitude smaller.
     system_analysis = StreamAnalysis(0.0, None, Interval(0.0, 0.0), 0)
+    system_sd = _MIN_SD
     if len(system_runs) > config.baseline_runs:
         baseline_runs = system_runs[: config.baseline_runs]
         system_baseline = _per_item_baseline(baseline_runs)
@@ -272,6 +277,8 @@ def decide(
         alpha,
         alpha_monitor,
         replicates,
+        system_sd=system_sd if len(system_runs) > config.baseline_runs else _MIN_SD,
+        anchor_sd=noise_floor.run_mean_sd,
     )
     corrected = (
         corrected_analysis.shift
@@ -338,6 +345,9 @@ def _corrected_stream(
     alpha: float,
     alpha_monitor: float,
     replicates: int,
+    *,
+    system_sd: float,
+    anchor_sd: float,
 ) -> StreamAnalysis:
     """Monitor ``system deviation - anchor deviation``, run by run.
 
@@ -374,7 +384,14 @@ def _corrected_stream(
         return empty
 
     paired = [system_devs[i] - anchor_devs[i] for i in shared]
-    baseline_sd = _sd(paired[: max(2, min(len(paired), config.baseline_runs))])
+    # The scale and null come from the two HELD-OUT baselines, not from the monitored
+    # stream itself. The system and anchor legs each hold out a baseline period; fitting
+    # this leg's scale on the first few monitored pairs made it the one data-dependent
+    # transform in the engine. The difference of two independent quantities has variance
+    # equal to the sum of theirs; if the judge's noise is partly shared between the legs
+    # the true SD is smaller, so this over-estimates — a wider band and a wider null, which
+    # is the conservative direction.
+    baseline_sd = max(math.sqrt(system_sd**2 + anchor_sd**2), _MIN_SD)
     scale = MonitorScale.for_target(config.target_shift, baseline_sd)
     # The corrected stream's null is centred on zero by construction: under "the judge
     # explains the whole move", the two deviations are equal and their difference is zero.
@@ -407,19 +424,24 @@ def _pin_state(
     A change accompanied by an epoch bump is a rebaseline and is legitimate; a change
     inside one epoch is a Hard Rule 8 violation.
     """
-    runs = [*system_runs, *anchor_runs]
-    if len(runs) < 2:
-        return (), True
-    epoch = runs[-1].epoch
-    in_epoch = [r for r in runs if r.epoch == epoch]
-    if len(in_epoch) < 2:
-        return (), True
-    first, last = in_epoch[0].judge_pin, in_epoch[-1].judge_pin
-    delta = last.differs_from(first)
-    if not delta:
+    # Compare within each stream, and against EVERY run rather than just the last.
+    #
+    # Concatenating the two streams and comparing first-to-last was wrong twice over: it
+    # pitted the first system run against the last anchor run, which is a cross-stream
+    # comparison rather than a drift check; and comparing only the endpoints missed a pin
+    # that changed at run 10 and changed back by run 40 — a judge swapped out and back is
+    # exactly as invalidating as one that stayed swapped.
+    changed: set[str] = set()
+    for stream in (system_runs, anchor_runs):
+        if len(stream) < 2:
+            continue
+        reference = stream[0].judge_pin
+        for run in stream[1:]:
+            changed.update(run.judge_pin.differs_from(reference))
+    if not changed:
         return (), True
     # The pin moved without the epoch moving with it.
-    return delta, False
+    return tuple(sorted(changed)), False
 
 
 def _pin_change_index(runs: Sequence[RunRecord]) -> int | None:

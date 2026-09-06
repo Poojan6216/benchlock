@@ -10,6 +10,7 @@ this module's syntax tree and failing on any arithmetic applied to an evidence v
 
 from __future__ import annotations
 
+import math
 import textwrap
 
 from benchlock.model.verdict import Attribution, Provisioning, Verdict
@@ -88,6 +89,12 @@ def render_verdict_block(attribution: Attribution) -> str:
                 f"minimum detectable judge shift at this anchor size = "
                 f"{evidence.min_detectable_judge_shift:.3f}, over {evidence.n_anchor_runs} "
                 f"monitored run(s) of {evidence.anchor_n} anchor items"
+            )
+        elif math.isinf(evidence.min_detectable_judge_shift):
+            detail = (
+                f"after only {evidence.n_anchor_runs} monitored anchor run(s), NO judge "
+                "shift of any size could have been proven yet — the anchor process cannot "
+                "reach its threshold this early, whatever the judge did"
             )
         else:
             detail = (

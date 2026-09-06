@@ -168,7 +168,14 @@ def min_detectable_shift(
 
     hi = dead_zone + 2.0 * band
     if not reaches(hi):
-        return hi  # even a saturating shift cannot be proven in this horizon
+        # NO shift is provable in this horizon — not even one that saturates the band.
+        # Returning a finite magnitude here would be read by every caller as "detectable",
+        # because they all compare numerically (`mds < observed`, `mds <= target`). That
+        # turned an anchor process which could not possibly cross into an ADEQUATE
+        # provisioning verdict, and produced a confident `SYSTEM` rollback recommendation
+        # on a pure judge shift — the exact phantom regression this tool exists to prevent.
+        # Infinity is the honest answer: no shift is small enough to be caught.
+        return math.inf
     lo = dead_zone
     for _ in range(80):  # bisection to well below float noise on a [0,1] score
         mid = 0.5 * (lo + hi)
@@ -257,25 +264,55 @@ def min_anchor_size(
     return max(detectability_n, race_n)
 
 
+def min_feasible_horizon(alpha: float, *, safety: float = DETECTION_SAFETY_FACTOR) -> int:
+    """The fewest runs in which ANY shift could be proven, at any anchor size.
+
+    Each run's log-wealth gain is capped by the bet truncation at ``log(1 + c)`` — a
+    saturating observation cannot contribute more than that. Crossing needs
+    ``safety * (log(1/alpha_m) + log 2)`` nats. The ratio is a floor on the horizon that no
+    amount of anchor provisioning can lower, and it is worth naming because a user who
+    asks for detection inside ten runs is asking for something arithmetic forbids.
+    """
+    _, alpha_monitor = split_alpha(alpha)
+    required = safety * (math.log(1.0 / alpha_monitor) + math.log(2.0))
+    per_run_cap = math.log(1.5)  # c = 0.5: the multiplier can never exceed 1 + c
+    return math.ceil(required / per_run_cap)
+
+
 class ProvisioningImpossibleError(Exception):
-    """No anchor size can reach the target, because shared judge noise dominates."""
+    """No anchor size can reach the target. The message says which constraint binds."""
 
     def __init__(
         self, target_shift: float, components: NoiseComponents, horizon: int, alpha: float
     ) -> None:
         self.target_shift = target_shift
         self.components = components
-        self.message = (
-            f"no anchor size can detect a judge shift of {target_shift:g} within {horizon} "
-            f"runs at alpha={alpha:g}. The judge's shared run-to-run noise is "
-            f"{components.shared_sd:.4f}, which moves every anchor item together and so "
-            "does not shrink as the anchor set grows"
-        )
-        self.hint = (
-            "raise --target-shift, lengthen --horizon, increase `anchor.noise_replicates` "
-            "so the snapshot is measured more precisely, or reduce the judge's own "
-            "variability (lower temperature, a more decisive rubric, a pinned snapshot)"
-        )
+        floor = min_feasible_horizon(alpha)
+        if horizon < floor:
+            self.message = (
+                f"no anchor size can detect a judge shift of {target_shift:g} within "
+                f"{horizon} runs at alpha={alpha:g}, because nothing at all is provable in "
+                f"fewer than {floor} runs: each run's evidence is capped by the bet "
+                "truncation, so a crossing needs at least that many runs whatever the judge "
+                "did"
+            )
+            self.hint = (
+                f"lengthen --horizon to at least {floor}, or raise alpha. More anchor items "
+                "cannot help here"
+            )
+        else:
+            self.message = (
+                f"no anchor size can detect a judge shift of {target_shift:g} within "
+                f"{horizon} runs at alpha={alpha:g}. The judge's shared run-to-run noise is "
+                f"{components.shared_sd:.4f}, which moves every anchor item together and so "
+                "does not shrink as the anchor set grows"
+            )
+            self.hint = (
+                "raise --target-shift, lengthen --horizon, increase "
+                "`anchor.noise_replicates` so the snapshot is measured more precisely, or "
+                "reduce the judge's own variability (a more decisive rubric, a pinned "
+                "snapshot)"
+            )
         super().__init__(f"{self.message}\n  fix: {self.hint}")
 
 

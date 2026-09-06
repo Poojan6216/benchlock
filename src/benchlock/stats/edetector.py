@@ -291,6 +291,7 @@ class EDetector:
         "_n_dn",
         "_n_pruned",
         "_n_up",
+        "_peak_log_e",
         "_start",
         "_strategy_name",
         "_sum_dn",
@@ -354,6 +355,12 @@ class EDetector:
         #: caller, by the report). Recomputing a log-sum-exp each time dominated the
         #: profile, so it is computed once per update and cached until the next one.
         self._log_e_cache: float | None = None
+        #: Running maximum of the combined statistic. Ville's inequality bounds
+        #: ``P(exists t : E_t >= 1/alpha)`` — the supremum over time, not the value at the
+        #: end. A drift that crossed and then subsided has still rejected the null, and
+        #: reading only the endpoint would silently discard the anytime-valid property the
+        #: whole tool is built on (and contradict `alarm_time`, which is already sticky).
+        self._peak_log_e = -math.inf
 
     # ---- storage -----------------------------------------------------------------------
 
@@ -442,6 +449,7 @@ class EDetector:
         self._t += 1
         self._prune()
         self._log_e_cache = self._compute_log_e()
+        self._peak_log_e = max(self._peak_log_e, self._log_e_cache)
         if self._alarm_time is None and self._log_e_cache >= math.log(self.threshold):
             self._alarm_time = self._t - 1
         return self._log_e_cache
@@ -515,11 +523,25 @@ class EDetector:
             return math.inf
 
     @property
+    def peak_log_e(self) -> float:
+        """Largest combined log e-value seen so far. This is what Ville's bound covers."""
+        return max(self._peak_log_e, self.log_e) if self._count else -math.inf
+
+    @property
+    def peak_e_value(self) -> float:
+        """The evidence the null has to answer for: the supremum over time, not the end."""
+        try:
+            return math.exp(self.peak_log_e)
+        except OverflowError:  # pragma: no cover
+            return math.inf
+
+    @property
     def threshold(self) -> float:
         return 1.0 / self.alpha
 
     def crossed(self) -> bool:
-        return self.log_e >= math.log(self.threshold)
+        """Has the process EVER reached the threshold? Sticky, matching `alarm_time`."""
+        return self.peak_log_e >= math.log(self.threshold)
 
     @property
     def alarm_time(self) -> int | None:
