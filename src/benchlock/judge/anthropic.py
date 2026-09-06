@@ -106,6 +106,7 @@ class AnthropicJudge:
     calls: int = 0
     input_tokens: int = 0
     output_tokens: int = 0
+    refusals: int = 0  #: HTTP-200 policy declines; billed, never scored
 
     def __post_init__(self) -> None:
         self._client: Any = None
@@ -147,8 +148,17 @@ class AnthropicJudge:
                 messages=[{"role": "user", "content": prompt}],
                 **self.params,
             )
+            # Account for the call before anything can raise: a refused call still bills,
+            # and a cost figure that drops refused calls under-reports the study.
+            usage = getattr(message, "usage", None)
+            in_tokens = int(getattr(usage, "input_tokens", 0) or 0)
+            out_tokens = int(getattr(usage, "output_tokens", 0) or 0)
+            self.calls += 1
+            self.input_tokens += in_tokens
+            self.output_tokens += out_tokens
             # A policy decline is an HTTP 200 with no usable score, not an exception.
             if getattr(message, "stop_reason", None) == "refusal":
+                self.refusals += 1
                 detail = getattr(message, "stop_details", None)
                 raise JudgeCallError(
                     f"the judge declined to score item {request.item_id!r} "
@@ -159,12 +169,6 @@ class AnthropicJudge:
             text = "".join(
                 block.text for block in message.content if getattr(block, "type", "") == "text"
             )
-            usage = getattr(message, "usage", None)
-            in_tokens = int(getattr(usage, "input_tokens", 0) or 0)
-            out_tokens = int(getattr(usage, "output_tokens", 0) or 0)
-            self.calls += 1
-            self.input_tokens += in_tokens
-            self.output_tokens += out_tokens
             results.append(
                 JudgeResult(
                     item_id=request.item_id,

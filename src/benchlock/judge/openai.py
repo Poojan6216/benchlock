@@ -43,6 +43,7 @@ class OpenAIJudge:
     calls: int = 0
     input_tokens: int = 0
     output_tokens: int = 0
+    refusals: int = 0  #: policy declines; billed, never scored
 
     def __post_init__(self) -> None:
         self._client: Any = None
@@ -89,13 +90,23 @@ class OpenAIJudge:
                 ],
                 **self.params,
             )
-            text = completion.choices[0].message.content or ""
+            # Account for the call before anything can raise: a refused call still bills.
             usage = getattr(completion, "usage", None)
             in_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
             out_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
             self.calls += 1
             self.input_tokens += in_tokens
             self.output_tokens += out_tokens
+            choice = completion.choices[0].message
+            refusal = getattr(choice, "refusal", None)
+            if refusal:
+                self.refusals += 1
+                raise JudgeCallError(
+                    f"the judge declined to score item {request.item_id!r}: {refusal}",
+                    "this item's content tripped a policy check; exclude it from the pool "
+                    "rather than recording a score that was never produced",
+                )
+            text = choice.content or ""
             results.append(
                 JudgeResult(
                     item_id=request.item_id,
