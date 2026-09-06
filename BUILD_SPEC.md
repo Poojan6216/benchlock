@@ -923,6 +923,8 @@ Phase 5 and Phase 7 are the ones that make anyone care. If the schedule slips, c
 [5.3, 5.4, 5.6, 7.10] Full 192-cell grid done (100 seeds/cell, 44 min). RESULTS.md is GENERATED and reports all eight methods with false alarm, ARL0, detection rate, judge->system and system->judge misattribution and indeterminate rate, always together — either metric alone is a way to win a benchmark without being useful. THE ANTI-RESULT, published as its own table: B1 detects a real regression in a mean-median 3.1 runs, Benchlock in 24.6 — EIGHT TIMES SLOWER — while B1 false-alarms on 20.6% of healthy pipelines and Benchlock on 0.0%. The README says plainly that if a false rollback is cheap and slow detection is expensive, B1 is the better tool. DECISION GATE 3 CLEARED WITH A MARGIN: judge->system misattribution across the grid is 0.13 for B5 (no anchor) and the naive baselines, 0.19 for the peeking t-test, and 0.01 for full Benchlock — a 13x reduction, with 0.10 landing in 'indeterminate' rather than being guessed. Five committed plots, each regenerating from committed data. Fixed the delay plot: B1 was hidden under B2 and the 0.000 bar drew nothing, so the most important number on the panel was invisible.
 [9.1b] Hard Rule 5 tightened. gen_results.py computes aggregates (means across grid cells) that appeared in RESULTS.md but existed in no committed file, so check_numbers.py correctly rejected them. Rather than loosen the check, the generator now writes bench/results/summary.json containing every aggregate it renders — a number a reader cannot find in the results directory is not traceable, whatever its provenance.
 [FINAL] All phases complete except Phase 6, which is blocked on a judge API key. 69/75 checkboxes ticked; the six open are 6.1-6.5 and the Definition-of-Done item that depends on them, all annotated in place as NOT MET rather than quietly left blank. 459 tests pass including every slow and mandatory one. ruff + ruff format + mypy --strict clean across 39 source files. Every number in README.md and RESULTS.md traces to a committed run. benchlock gates its own repository: 4/4 fixtures give the right verdict, the right exit code, and green replay. Wheel builds and the full init->baseline->observe->verdict->gate->replay workflow runs from a clean-environment install. NOT published to PyPI — outward-facing and irreversible, left for an explicit go-ahead. scripts/check_done.py found two bugs in itself while verifying the Definition of Done, one of which would have reported a false pass on the very item that is not met.
+[6.1, 6.2, 6.3, 6.4, 6.5] Tier 2 RAN FOR REAL once an ANTHROPIC_API_KEY arrived: 400 HelpSteer2 items stratified by human helpfulness, four judge configurations on claude-sonnet-5 and claude-haiku-4-5 (baseline, other snapshot, strict rubric, higher effort), 2,456 calls, $3.05, zero API errors, 144 safety refusals. Current models reject 'temperature' and Haiku 4.5 rejects 'effort', so params are per model. Findings: judge self-disagreement at its most deterministic setting 18.90% (36.3% of items varied at least once over five identical calls with a cache-busting nonce); run-to-run wobble 2.06x what independent per-item noise predicts, so the shared_sd term in provisioning is real; the refusal rate moved from 2.3% to 15.0% on a rubric-only edit and tripled on an effort-only change — refusals are drift that a score-watching tool cannot see, now a stated limitation. Benchlock 5/6 scenarios right (missed the effort change, which moved refusals not scores); every baseline 2/6. No OpenAI key, so the cross-provider configuration was not run and RESULTS.md says so. The concurrent scorer had a silent-failure bug (future.result() never called), rewritten to record and refuse on failures.
+[AUDIT] Post-build adversarial audit (6 finder lenses x 3 refuting verifiers) — confirmed gaps, all fixed, all verified by reproduction: (1) min_detectable_shift returned a FINITE magnitude when no shift was provable in the horizon, which every caller read as 'detectable', so a pure judge shift over a short horizon produced a phantom SYSTEM verdict — it now returns inf, min_feasible_horizon() gives the floor (29 runs at alpha 0.05), ProvisioningImpossibleError says 'more anchors cannot help', and the human report says 'no judge shift of any size could have been proven yet'; reproduction now yields indeterminate/race_failed. (2) The e-value reported was the endpoint, not the peak, so a transient crossing read as never crossing — EDetector tracks peak log-e and crossed() is sticky, consistent with alarm_time. (3) _pin_state compared pins across streams — now per stream, every run against that stream's first; judge swap-and-back yields pin_violation. (4) The corrected stream's scale was data-dependent — baseline_sd = sqrt(system_sd^2 + anchor_sd^2), fixed before monitoring. (5) Adversarial 7.7 was an identity no-op — it now builds real zero-variance and zero-variance-then-step streams. (6) 7.9 claimed the nonce's effect on a real judge was measured — relabelled UNMEASURED. (7) --only clobbered adversarial-latest.json — separate file. (8) judge-refusal-rates.json had no committed producer — bench/real/refusal_rates.py derives it from the run log. (9) writeup.md carried real-judge numbers as literals — read from JSON. (10) README did not say which numbers were simulated and which real — labelled, with new limitations: adapter fixtures are doc-derived, the GitHub Action is not exercised in CI. (11) Both judge adapters raised on refusal before reading usage, so refused calls' tokens went uncounted — usage is accounted first, refusals counted; the committed cost.json predates the fix and RESULTS.md discloses it. (12) compose.py's system-regression scenarios subtract a fixed 0.10 from real scores and the item set is intersected across configs — disclosed in METHODOLOGY. (13) Nothing enforced that generated docs matched their generators — scripts/check_generated.py regenerates all six and fails on a diff, wired into CI. (14) provisioning.md's worked example stated the wrong item count — 40. Because decide() changed, EVERY simulation number was regenerated against the final engine (Hard Rule 5): headline 21.2% / 7.4% / 0.0% false alarms, judge cell 100% 'judge'; Tier 2, demos and dogfood re-run and unchanged in verdict.
 ```
 
 ---
@@ -948,9 +950,9 @@ the judge's own scores answers that exactly.
 **1. False alarms under peeking.** Over 500 drift-free streams, each inspected after every
 one of 142 runs, at alpha=0.05:
 
-- a t-test re-run at every run raises at least one false alarm on **20.6%** of perfectly
+- a t-test re-run at every run raises at least one false alarm on **21.2%** of perfectly
   healthy pipelines
-- Bonferroni-corrected over runs-so-far: **8.6%**, still above its own alpha
+- Bonferroni-corrected over runs-so-far: **7.4%**, still above its own alpha
 - Benchlock: **0.0%**
 
 **2. Misattribution under a silent judge change.** The same pipeline with only the judge
@@ -971,7 +973,7 @@ row in RESULTS.md rather than a footnote, and the README says plainly that if a 
 rollback is cheap and slow detection is expensive, the t-test is the better tool.
 
 Bonferroni is also *faster* than Benchlock and still holds a lower false-alarm rate than
-the raw t-test — it is a real method, not a strawman, and its 8.6% is the honest reason it
+the raw t-test — it is a real method, not a strawman, and its 7.4% is the honest reason it
 is not sufficient rather than a reason to dismiss it.
 
 ### The attacks that beat it, with measured rates
@@ -995,6 +997,22 @@ all per-item deviations became zero and the "defence" was an artefact; 7.2 repor
 case rather than the fraction of ramp rates that evaded. The rewritten 7.5 exposed a
 genuine hole — hashing item *ids* does not hash item *content*, so the fixed-suite check is
 blind to a traffic-mix shift that preserves ids.
+
+### The post-build audit: what it found
+
+After the build was declared done, an adversarial audit — six independent finder lenses,
+each finding checked by three verifiers instructed to refute it — ran over the code, the
+benchmarks and the documents. Fourteen findings survived refutation; all fourteen are
+fixed and each fix was verified by reproducing the original failure. The four that changed
+behaviour are decisions 12–14 below plus the corrected-stream scale, which was
+data-dependent and is now `sqrt(system_sd² + anchor_sd²)`, fixed before monitoring
+begins. The rest were honesty defects: an adversarial attack that was an identity no-op,
+a mitigation described as measured when it was not, real-judge numbers carried as string
+literals in a generated document, a README that did not say which numbers were simulated,
+judge adapters that dropped a refused call's tokens from the cost, and no check that a
+generated document still matched its generator. `scripts/check_generated.py` now closes
+that last one in CI. Because `decide()` changed, every simulation number in this report
+and in the generated documents was regenerated against the final engine.
 
 ### Every decision this spec did not specify, and why
 
@@ -1031,6 +1049,16 @@ blind to a traffic-mix shift that preserves ids.
     standard deviations cost about a third of the detectable-shift resolution.
 11. **Not published to PyPI.** Publishing is outward-facing and irreversible; the wheel is
     built and verified on a clean environment, awaiting an explicit go-ahead.
+12. **`min_detectable_shift` returns infinity, not a number, when no shift is provable in
+    the horizon.** Every caller treated a finite value as "detectable", so a short horizon
+    could turn a pure judge shift into a confident `system` verdict. `min_feasible_horizon`
+    now states the floor — 29 monitored runs at alpha=0.05, from the truncated-bet growth
+    cap — and the provisioning error says that more anchors cannot help.
+13. **The e-value a verdict answers for is the peak over time, not the endpoint.** Ville's
+    inequality bounds the supremum; reporting the endpoint let a transient crossing read as
+    "never crossed". `crossed()` is sticky and agrees with `alarm_time`.
+14. **Pin state is tracked per stream, against that stream's first run.** Comparing pins
+    across streams let a judge swap-and-back pass silently.
 
 ### Everything in the Definition of Done that is not ticked, and why
 
@@ -1041,7 +1069,7 @@ completed afterwards against real hosted judges.
 ### What the real judges said
 
 Tier 2 ran against `claude-sonnet-5` and `claude-haiku-4-5` over 400 HelpSteer2 items
-stratified by human helpfulness rating: **2,456 calls, $3.05, zero API errors.
+stratified by human helpfulness rating: **2,456 calls, $3.05, zero API errors.**
 
 **Benchlock got 5/6 scenarios right; every baseline got 2/6.** The one it missed
 is instructive and is in the table: a judge-effort change moved the *refusal* rate without

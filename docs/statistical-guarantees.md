@@ -89,7 +89,7 @@ replicates, 300 runs, 100 trials.
 | null sized against | false-alarm rate |
 |---|---|
 | the measured noise floor | **0.00** |
-| a judge assumed 50x quieter | **0.54** |
+| a judge assumed 50x quieter | **0.56** |
 
     uv run pytest tests/test_noisefloor.py -k zero_noise_floor
 
