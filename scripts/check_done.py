@@ -179,12 +179,21 @@ def check() -> list[tuple[bool, str, str]]:
         "A user with no labeled data completes init -> verdict in under ten minutes",
         "measured at 27.7s with the built-in judge (Phase 3 gate)",
     )
+    if cost is None:
+        cost_detail = "missing"
+    elif real_measurement:
+        cost_detail = (
+            f"cost.json: ${cost['total_dollars']:.2f} for {cost['total_calls']:,} hosted-judge "
+            f"calls, measured from reported token counts"
+        )
+    else:
+        cost_detail = (
+            f"cost.json: ${cost['total_dollars']:.2f} (simulated pool; no hosted judge called)"
+        )
     add(
         cost is not None and cost["total_dollars"] < 50,
         "Total benchmark spend is committed in cost.json and is under $50",
-        f"cost.json: ${cost['total_dollars']:.2f} (simulated pool; no hosted judge called)"
-        if cost
-        else "missing",
+        cost_detail,
     )
     return out
 
