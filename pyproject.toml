@@ -53,7 +53,11 @@ packages = ["src/benchlock"]
 # own group because it builds from source and needs Boost headers. CI installs Boost and
 # runs with this group so the differential test always executes there.
 #   macOS:  brew install boost && uv sync --group oracle
-#   Debian: sudo apt-get install -y libboost-dev cmake && uv sync --group oracle
+#   Debian: sudo apt-get install -y libboost-dev, then build it against a current pybind11 —
+#           the sdist pins pybind11~=2.6, which cannot compile on Python 3.11+ / GCC 13:
+#             uv pip install "pybind11>=2.12" setuptools wheel scikit-build cmake ninja
+#             uv pip install --no-build-isolation "confseq==0.0.11"
+#           (this is what .github/workflows/ci.yml does)
 oracle = ["confseq>=0.0.11"]
 dev = [
     "pytest>=8.0",

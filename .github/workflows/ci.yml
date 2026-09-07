@@ -31,8 +31,19 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with: { enable-cache: true }
       - name: Install Boost for the confseq oracle
-        run: sudo apt-get update && sudo apt-get install -y libboost-dev cmake
-      - run: uv sync --group oracle
+        run: sudo apt-get update && sudo apt-get install -y libboost-dev
+      - run: uv sync
+      # confseq's sdist pins its *build* to pybind11~=2.6, which predates Python 3.11's
+      # opaque PyFrameObject and GCC 13's <cstdint> hygiene, so an isolated build can never
+      # compile on a current runner. Build it against a modern pybind11 instead.
+      - name: Build the confseq oracle against a current pybind11
+        run: |
+          uv pip install "pybind11>=2.12" setuptools wheel scikit-build cmake ninja
+          uv pip install --no-build-isolation "confseq==0.0.11"
+      # The differential tests importorskip the oracle. On CI a skip must be a failure:
+      # a green run that silently skipped the reference comparison proves nothing.
+      - name: The oracle must be importable, not skipped
+        run: uv run python -c "import numpy as np; np.float_ = np.float64; import confseq.betting, confseq.predmix"
       - name: Test suite with coverage
         run: uv run pytest -m "not slow" --cov --cov-report=term-missing
 
