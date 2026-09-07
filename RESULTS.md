@@ -50,7 +50,7 @@ a bug to be fixed — it is the price of the guarantee.**
 
 | | B1 peeking t-test | B6 Benchlock |
 |---|---:|---:|
-| mean median detection delay (runs) | 3.1 | 24.6 |
+| mean median detection delay (runs) | 3.2 | 25.1 |
 | false-alarm rate on drift-free streams | 0.212 | 0.000 |
 
 B1 detects a real regression sooner. It also raises a false alarm on 21% of
@@ -73,14 +73,14 @@ constantly wins.
 
 | method | false alarm | ARL₀ | detection rate | judge→system | system→judge | indeterminate |
 |---|---:|---:|---:|---:|---:|---:|
-| B0 fixed threshold | 0.037 | 51.0 | 0.81 | 0.13 | 0.00 | 0.00 |
-| B1 peeking t-test | 0.234 | 42.0 | 0.85 | 0.19 | 0.00 | 0.00 |
-| B2 Bonferroni t-test | 0.100 | 47.7 | 0.87 | 0.17 | 0.00 | 0.00 |
-| B3 CUSUM | 0.002 | 52.0 | 0.84 | 0.13 | 0.00 | 0.00 |
+| B0 fixed threshold | 0.034 | 51.0 | 0.81 | 0.13 | 0.00 | 0.00 |
+| B1 peeking t-test | 0.236 | 42.1 | 0.85 | 0.19 | 0.00 | 0.00 |
+| B2 Bonferroni t-test | 0.086 | 48.2 | 0.87 | 0.17 | 0.00 | 0.00 |
+| B3 CUSUM | 0.003 | 51.9 | 0.84 | 0.13 | 0.00 | 0.00 |
 | B4 ADWIN | 0.000 | 52.0 | 0.00 | 0.00 | 0.00 | 0.00 |
-| B4 DDM | 0.004 | 51.9 | 0.01 | 0.00 | 0.00 | 0.00 |
+| B4 DDM | 0.017 | 51.6 | 0.01 | 0.00 | 0.00 | 0.00 |
 | B5 Benchlock, no anchor | 0.000 | 52.0 | 0.81 | 0.13 | 0.00 | 0.00 |
-| B6 **Benchlock** | 0.000 | 52.0 | 0.82 | 0.01 | 0.00 | 0.10 |
+| B6 **Benchlock** | 0.000 | 52.0 | 0.82 | 0.00 | 0.00 | 0.10 |
 
 `judge→system` is how often a method called a judge change a system regression.
 `system→judge` is the reverse. For single-stream methods the first column is 1.00 by
@@ -90,13 +90,13 @@ construction whenever they fire, because "regression" is the only verdict availa
 
 | method | δs=0.02 | δs=0.05 | δs=0.1 |
 |---|---:|---:|---:|
-| B0 fixed threshold | 14.8 | 1.9 | 1.6 |
-| B1 peeking t-test | 6.3 | 2.3 | 0.5 |
-| B2 Bonferroni t-test | 11.7 | 4.8 | 1.1 |
-| B3 CUSUM | 19.2 | 3.8 | 0.2 |
-| B4 DDM | 22.0 | 4.8 | 2.7 |
-| B5 Benchlock, no anchor | 35.8 | 21.9 | 18.5 |
-| B6 **Benchlock** | 35.8 | 21.9 | 18.5 |
+| B0 fixed threshold | 16.4 | 1.9 | 1.7 |
+| B1 peeking t-test | 6.8 | 2.4 | 0.5 |
+| B2 Bonferroni t-test | 12.2 | 5.1 | 1.1 |
+| B3 CUSUM | 16.9 | 3.8 | 0.2 |
+| B4 DDM | 13.1 | 4.8 | 3.3 |
+| B5 Benchlock, no anchor | 38.6 | 22.0 | 18.6 |
+| B6 **Benchlock** | 38.6 | 21.9 | 18.6 |
 
     uv run python bench/sim/run_sim.py --all
 

@@ -79,7 +79,7 @@ have the judge re-score them every run. If those move, only the judge can have m
 It is difference-in-differences, with the anchor set as the control group.
 
 Across the full grid, judge-to-system misattribution is **0.13** without a control
-group and **0.01** with one — with **0.10** landing in `indeterminate`
+group and **0.00** with one — with **0.10** landing in `indeterminate`
 rather than being guessed at.
 
 ---
@@ -90,7 +90,7 @@ rather than being guessed at.
 
 | | peeking t-test | anytime-valid |
 |---|---:|---:|
-| mean median detection delay | **3.1 runs** | **24.6 runs** |
+| mean median detection delay | **3.2 runs** | **25.1 runs** |
 | false alarm on healthy pipelines | **21.2%** | **0.0%** |
 
 Roughly **8× slower**. That is the price, it is real, and if a

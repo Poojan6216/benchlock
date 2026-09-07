@@ -402,9 +402,9 @@ verdict, which together are the difference between a guarantee and a decoration.
   each project's documented output shape, not captured from real runs.** A schema that has
   drifted from its docs would pass those tests and fail in the field. An unrecognised shape
   is refused, never guessed at.
-- **The GitHub Action has not been exercised on a real GitHub runner.** CI runs the same CLI
-  sequence directly (`scripts/dogfood.py`); the composite action wrapping it is untested
-  end to end.
+- **The composite GitHub Action has not been exercised end to end.** This repository's own
+  CI runs the same CLI sequence directly (`scripts/dogfood.py`) and passes on a real
+  runner; the action that wraps it for *other* repositories has not been run from one.
 
 ---
 

@@ -81,7 +81,7 @@ last two against real judges — with the commands in this repository:
 ### What it costs
 
 **Benchlock is about 8× slower to spot a real regression** than the
-everyday method — 24.6 runs on average against 3.1. That is the price of
+everyday method — 25.1 runs on average against 3.2. That is the price of
 a guarantee that survives daily looking, and it is a headline row in
 [RESULTS.md](RESULTS.md), not a footnote. If a false rollback is cheap for you and slow
 detection is expensive, the everyday method is genuinely the better tool.
@@ -351,9 +351,9 @@ verdict, which together are the difference between a guarantee and a decoration.
   each project's documented output shape, not captured from real runs.** A schema that has
   drifted from its docs would pass those tests and fail in the field. An unrecognised shape
   is refused, never guessed at.
-- **The GitHub Action has not been exercised on a real GitHub runner.** CI runs the same CLI
-  sequence directly (`scripts/dogfood.py`); the composite action wrapping it is untested
-  end to end.
+- **The composite GitHub Action has not been exercised end to end.** This repository's own
+  CI runs the same CLI sequence directly (`scripts/dogfood.py`) and passes on a real
+  runner; the action that wraps it for *other* repositories has not been run from one.
 
 ---
 
