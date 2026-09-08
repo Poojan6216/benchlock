@@ -116,9 +116,15 @@ The fix is not clever. Freeze a set of `(item, output)` pairs the system never t
 have the judge re-score them every run. If those move, only the judge can have moved them.
 It is difference-in-differences, with the anchor set as the control group.
 
-Across the full grid, judge-to-system misattribution is **{b5_mis:.2f}** without a control
-group and **{b6_mis:.2f}** with one — with **{b6_indet:.2f}** landing in `indeterminate`
-rather than being guessed at.
+Across the judge-truth cells of the grid, judge-to-system misattribution is **{b5_mis:.2f}**
+without a control group and **{b6_mis:.2f}** with one — with **{b6_indet:.2f}** landing in
+`indeterminate` rather than being guessed at.
+
+That second figure is a mean, and means hide tails. The failures are concentrated in one
+identifiable regime — a noisy judge, coarse scores, a change arriving late — where the rate
+is far higher than the average suggests. The cell and its number are in
+[RESULTS.md](../RESULTS.md); quoting only the average here would be the same kind of
+flattering summary this project was built to catch.
 
 ---
 

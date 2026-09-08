@@ -121,8 +121,16 @@ def grid_section(sim: dict[str, Any]) -> str:
             if row["arl0"] is not None:
                 by_method[method]["arl0"].append(row["arl0"])
         else:
-            by_method[method]["judge_as_system"].append(row["judge_as_system"])
-            by_method[method]["system_as_judge"].append(row["system_as_judge"])
+            # Average each misattribution over the cells where it is DEFINED, not over
+            # every non-stable cell. Naming the judge as the cause is only possible on a
+            # judge-truth stream; including the 144 system- and both-truth cells in the
+            # denominator dilutes the rate about fivefold and renders a real 2.4% as
+            # "0.00". A metric that improves when you add cells it cannot occur in is not
+            # measuring what its column heading says.
+            if row["truth"] == "judge":
+                by_method[method]["judge_as_system"].append(row["judge_as_system"])
+            if row["truth"] == "system":
+                by_method[method]["system_as_judge"].append(row["system_as_judge"])
             by_method[method]["indeterminate"].append(row["indeterminate"])
             if row["detection_rate"] is not None:
                 by_method[method]["detection"].append(row["detection_rate"])
@@ -156,6 +164,35 @@ def grid_section(sim: dict[str, Any]) -> str:
             f"{fmt(cells['indeterminate'], '.2f')} |"
         )
 
+    # The average is not the whole story, and for this metric the tail is the story: a
+    # tool that is confidently wrong 40% of the time in one identifiable regime is not
+    # described by a grid mean of 0.02. Name the worst cell.
+    judge_cells = [
+        r for r in sim["rows"] if r["method"] == "B6-benchlock" and r["truth"] == "judge"
+    ]
+    worst = max(judge_cells, key=lambda r: r["verdicts"].get("system", 0), default=None)
+    if worst is not None and worst["verdicts"].get("system", 0):
+        worst_rate = record(
+            "grid.B6-benchlock.judge_as_system_worst_cell",
+            worst["verdicts"]["system"] / worst["n"],
+        )
+        worst_note = (
+            f"\n**Where Benchlock's own misattribution concentrates.** The grid mean above "
+            f"is an average over {len(judge_cells)} judge-truth cells and hides the shape of "
+            f"the failures, which are not spread evenly. The worst cell is a judge shift of "
+            f"{worst['judge_shift']:g} arriving at run {worst['change_at']} on "
+            f"`{worst['score_type']}` scores with a noisy judge (per-item SD "
+            f"{worst['per_item_sd']:g}): there Benchlock returns `system` on "
+            f"**{worst_rate:.0%}** of streams where only the judge moved — a confident, "
+            f"wrong rollback recommendation. A late change point leaves few post-change "
+            f"runs for the anchor process to accumulate evidence in, and a noisy judge "
+            f"widens the null it has to clear; the anchor leg then fails to cross while "
+            f"the corrected leg does. If your judge is noisy and your scores are coarse, "
+            f"this is the regime to know about.\n"
+        )
+    else:  # pragma: no cover - only when the grid records no misattribution at all
+        worst_note = ""
+
     shifts = sorted({s for m in delays.values() for s in m})
     delay_header = " | ".join(f"δs={s:g}" for s in shifts)
     delay_rows = []
@@ -181,10 +218,12 @@ constantly wins.
 |---|---:|---:|---:|---:|---:|---:|
 {chr(10).join(rows)}
 
-`judge→system` is how often a method called a judge change a system regression.
-`system→judge` is the reverse. For single-stream methods the first column is 1.00 by
-construction whenever they fire, because "regression" is the only verdict available to them.
-
+`judge→system` is how often a method called a judge change a system regression, averaged
+over the judge-truth cells — the ones where that error is possible at all. `system→judge`
+is the reverse, over system-truth cells. For single-stream methods the first column is 1.00
+by construction whenever they fire, because "regression" is the only verdict available to
+them.
+{worst_note}
 ### Median detection delay, in runs
 
 | method | {delay_header} |

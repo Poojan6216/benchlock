@@ -31,6 +31,10 @@ def main() -> int:
     fa = load("eprocess-false-alarm.json")
     nf = load("noise-floor-earns-its-place.json")
     prov = load("provisioning-calibration.json")
+    headline = load("sim-headline.json")
+    b6_fa = headline["stable"]["B6-benchlock"]["alarm_rate"]
+    seeds = headline["seeds"]
+    monitored = headline["monitored_runs"]
 
     cases = "\n".join(
         f"| {c['target_shift']:.3f} | {c['replicates']} | {c['horizon']} | "
@@ -51,12 +55,32 @@ number here comes from a run in `bench/results/` and names the command that prod
 **The false-alarm probability is bounded over the whole monitoring process, not per run.**
 For a drift-free stream inspected after every CI run, for as long as you like:
 
-    P( the detector ever alarms )  <=  alpha
+    P( a given detector ever alarms )  <=  alpha
 
 This is Ville's inequality (1939) applied to a non-negative martingale, and it is the
 only reason a number on a dashboard you look at daily can mean anything. A fixed-alpha
 test re-run at every observation has no type-I error control at all: under optional
 stopping its false-alarm probability climbs toward 1.
+
+Each stream's budget is spent in two halves that sum to `alpha`: `alpha/2` on the
+anytime-valid interval for the unknown baseline, and `alpha/2` on the detector threshold
+`1/alpha_monitor`.
+
+**The verdict-level bound is `2 * alpha`, not `alpha`, and this document previously said
+otherwise.** A verdict is non-`stable` when the anchor process crosses *or* the system
+process crosses, and those are two separate `alpha`-level processes:
+
+    P( any non-`stable` verdict on a drift-free pipeline )  <=  2 * alpha
+
+by the union bound. (The difference-in-differences process does not widen this: it only
+separates `both` from `judge` once the anchor has already crossed, so it cannot raise an
+alarm on its own.) At the default `alpha=0.05` the honest guarantee is therefore 10%, not
+5%. The construction is conservative enough that the measured rate is far below either
+number — **{b6_fa:.1%} over {seeds} drift-free streams, each inspected after every one of
+{monitored} runs** — but a measured rate is not a guarantee, and the guarantee is the
+thing this page exists to state. Spending `alpha/2` per stream would restore a
+verdict-level `alpha`; it would also slow every detection, and that trade has not been
+made. If you need a verdict-level `alpha`, pass half of it.
 
 ## What is *not* guaranteed
 
@@ -65,6 +89,13 @@ stopping its false-alarm probability climbs toward 1.
 - **Not a claim about judge correctness.** A judge that was always wrong stays consistently
   wrong and correctly reads as stable.
 - **Not coverage of a change the anchor set cannot see.** See `threat-model.md`.
+- **Not symmetric between the two errors.** Benchlock refuses to say `system` when the
+  anchor set lacked the power to rule the judge out — that is the `indeterminate` verdict,
+  and it is the point of the tool. There is no matching refusal in the other direction: a
+  `judge` verdict is returned whenever the anchor crossed and the corrected process did
+  not, without asking whether the corrected process had the power to see a system component
+  underneath. A genuine regression arriving alongside judge drift can therefore be reported
+  as `judge`, pass the gate, and be absorbed by the re-baseline that verdict recommends.
 
 ---
 

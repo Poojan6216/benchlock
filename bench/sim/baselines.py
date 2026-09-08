@@ -184,17 +184,34 @@ class Cusum:
 
 @dataclass(frozen=True, slots=True)
 class Adwin:
+    """ADWIN over the item-level score stream, like every other baseline that can use it.
+
+    It was previously fed one observation per run — the run mean — while the peeking
+    t-test and DDM both received individual item scores. ADWIN's cut bound carries an
+    absolute term calibrated for values spanning [0,1]; on a sequence of run means, whose
+    spread is smaller than the per-item spread by `sqrt(n)`, that term sits above the
+    shift being tested and the algorithm is structurally blind to its own input. Reporting
+    a named third-party method as detecting nothing, when the reason is the stream we
+    chose to hand it, is not a fair comparison. It is given the same stream as the others
+    here; it still detects the grid's shifts rarely, and that is now its own result rather
+    than an artefact of ours.
+    """
+
     delta: float = 0.05
     name: str = "B4-adwin"
 
     def run(self, view: StreamView) -> MethodResult:
         from river.drift import ADWIN
 
+        if not view.system_items:
+            return MethodResult(self.name, None, STABLE)
         detector = ADWIN(delta=self.delta)
-        for mean in view.baseline:
-            detector.update(float(mean))
-        for t, mean in enumerate(view.monitored):
-            detector.update(float(mean))
+        for run in view.system_items[: view.baseline_runs]:
+            for score in run:
+                detector.update(float(score))
+        for t, run in enumerate(view.system_items[view.baseline_runs :]):
+            for score in run:
+                detector.update(float(score))
             if detector.drift_detected:
                 return MethodResult(self.name, t, REGRESSION)
         return MethodResult(self.name, None, STABLE)
