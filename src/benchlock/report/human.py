@@ -82,6 +82,29 @@ def render_verdict_block(attribution: Attribution) -> str:
     for reason in attribution.reasons:
         lines.extend(_bullet(reason))
 
+    # A deviation that ran past the estimation band is reported pinned at the band edge.
+    # Saying "-0.150 [CS: -0.200, -0.100]" for a true move of -0.30 is not a conservative
+    # understatement, it is an interval that does not cover the value it claims to bound —
+    # so the magnitude has to be labelled a floor rather than presented as a measurement.
+    if evidence.system_shift_saturated or evidence.anchor_shift_saturated:
+        which = " and ".join(
+            name
+            for name, hit in (
+                ("system", evidence.system_shift_saturated),
+                ("anchor", evidence.anchor_shift_saturated),
+            )
+            if hit
+        )
+        lines.extend(
+            _bullet(
+                f"the {which} move ran past the estimation band, so the magnitude above is "
+                f"a LOWER BOUND and its interval does not cover the true shift. The verdict "
+                f"is unaffected — a move too big to measure is still a move — but do not "
+                f"quote the number. Re-run with a larger --target-shift to size the band "
+                f"for a move this large"
+            )
+        )
+
     if evidence.anchor_n:
         lines.append(f"- anchor provisioning: {evidence.provisioning.value}")
         if evidence.provisioning is Provisioning.ADEQUATE:

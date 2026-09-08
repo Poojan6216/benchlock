@@ -324,6 +324,8 @@ def decide(
         baseline_judge_model=system_runs[0].judge_pin.model if system_runs else "",
         current_judge_model=system_runs[-1].judge_pin.model if system_runs else "",
         judge_pin_changed_at=_pin_change_index(system_runs),
+        system_shift_saturated=system_analysis.saturated,
+        anchor_shift_saturated=anchor_analysis.saturated,
     )
 
     return apply_lattice(

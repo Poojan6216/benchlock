@@ -53,8 +53,12 @@ def render_markdown(attribution: Attribution, *, title: str = "Benchlock verdict
         "",
         "| shift | confidence sequence |",
         "|---|---|",
-        f"| anchor (the judge) | {_interval(e.anchor_shift.lower, e.anchor_shift.upper)} |",
-        f"| system (raw) | {_interval(e.system_shift.lower, e.system_shift.upper)} |",
+        f"| anchor (the judge) | {_interval(e.anchor_shift.lower, e.anchor_shift.upper)}"
+        + (" **(lower bound — ran past the band)**" if e.anchor_shift_saturated else "")
+        + " |",
+        f"| system (raw) | {_interval(e.system_shift.lower, e.system_shift.upper)}"
+        + (" **(lower bound — ran past the band)**" if e.system_shift_saturated else "")
+        + " |",
         "| system, judge removed | "
         + _interval(e.corrected_shift.lower, e.corrected_shift.upper)
         + " |",

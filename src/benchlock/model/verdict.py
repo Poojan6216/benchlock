@@ -58,6 +58,12 @@ class Evidence:
     baseline_judge_model: str = ""
     current_judge_model: str = ""
     judge_pin_changed_at: int | None = None
+    #: True when a run's deviation ran past the estimation band, so the reported shift and
+    #: its interval are pinned at the band edge. The magnitude is then a LOWER BOUND on the
+    #: move, not a measurement of it, and the interval does not cover the true value — so
+    #: it has to be said out loud rather than computed and dropped.
+    system_shift_saturated: bool = False
+    anchor_shift_saturated: bool = False
 
     @property
     def crossed_at(self) -> dict[StreamKind, int | None]:
@@ -108,6 +114,8 @@ class Evidence:
             "baseline_judge_model": self.baseline_judge_model,
             "current_judge_model": self.current_judge_model,
             "judge_pin_changed_at": self.judge_pin_changed_at,
+            "system_shift_saturated": self.system_shift_saturated,
+            "anchor_shift_saturated": self.anchor_shift_saturated,
         }
 
 
