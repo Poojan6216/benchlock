@@ -91,11 +91,20 @@ def _quantise(values: np.ndarray, score_type: ScoreType) -> np.ndarray:
 
 
 def _judge_pin(model: str, scale: tuple[float, float]) -> JudgePin:
+    """A pin identical in shape to one the shipped CLI would write.
+
+    The params come from the adapter rather than being spelled out here. A fixture that
+    hard-codes a different set produces streams whose pins no real run could reproduce,
+    which turns any test comparing a seeded ledger against a live config into a test of
+    whether two hard-coded dicts happen to match.
+    """
+    from benchlock.judge.anthropic import AnthropicJudge
+
     return JudgePin.build(
         provider="anthropic",
         model=model,
         rubric_text="Score the answer 1-5 for helpfulness and factual accuracy.\n",
-        params={"temperature": 0.0, "max_tokens": 512},
+        params=AnthropicJudge().params,
         scale=scale,
     )
 

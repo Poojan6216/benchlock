@@ -257,10 +257,27 @@ class AnchorConfig(_Base):
 
 
 class JudgeParams(_Base):
-    """Sampling parameters. Any change here is a judge change (Hard Rule 8)."""
+    """Sampling parameters. Any change here is a judge change (Hard Rule 8).
 
-    temperature: Annotated[float, Field(ge=0.0, le=2.0)] = 0.0
-    max_tokens: Annotated[int, Field(ge=1)] = 512
+    Every field defaults to *unset* rather than to a value, and only what you actually
+    write in `benchlock.yaml` is sent to the provider. That matters because the right
+    parameters are now provider- and generation-specific: current Anthropic models reject
+    `temperature` and `top_p` with a 400 and use `thinking` plus `output_config.effort`
+    instead, so a schema that always sent `temperature: 0.0` could not talk to them at all.
+    Unset means "let the adapter's own default apply", and the adapter's default is chosen
+    to work with the models it names.
+
+    Unknown keys are ALLOWED here, unlike everywhere else in this config. The set of valid
+    request parameters belongs to the provider, not to us; forbidding what we have not
+    heard of would mean a new provider parameter could never be used without a release. A
+    genuinely invalid key surfaces as the provider's own 400, and — because the whole
+    params dict is hashed into the judge pin — setting one is still a judge change.
+    """
+
+    model_config = ConfigDict(extra="allow", frozen=True, protected_namespaces=())
+
+    temperature: Annotated[float, Field(ge=0.0, le=2.0)] | None = None
+    max_tokens: Annotated[int, Field(ge=1)] | None = None
     top_p: Annotated[float, Field(gt=0.0, le=1.0)] | None = None
     seed: int | None = None
     response_format: str | None = None
@@ -268,7 +285,7 @@ class JudgeParams(_Base):
 
 class JudgeConfig(_Base):
     provider: ProviderKind = ProviderKind.ANTHROPIC
-    model: Annotated[str, Field(min_length=1)] = "claude-sonnet-4-5-20250929"
+    model: Annotated[str, Field(min_length=1)] = "claude-sonnet-5"
     rubric: Path = Path("./evals/rubric.md")
     params: JudgeParams = JudgeParams()
     #: Phase 7.9 — defeat provider-side response caching on the anchor stream.

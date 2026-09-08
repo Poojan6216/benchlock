@@ -40,9 +40,11 @@ from benchlock.anchor.select import Candidate, select_anchors
 from benchlock.attribute.engine import decide
 from benchlock.config import (
     DEFAULT_CONFIG_NAME,
+    AdapterKind,
     AttributionConfig,
     BenchlockConfig,
     ConfigError,
+    ProviderKind,
     discover_config_path,
 )
 from benchlock.jsonlog import Level, log
@@ -148,26 +150,17 @@ def _resolve_paths(cfg: BenchlockConfig, root: Path) -> BenchlockConfig:
 def _judge_pin(cfg: BenchlockConfig, *, simulate: bool = False) -> JudgePin:
     """Hash the judge configuration. The rubric must be readable: it is part of the pin.
 
+    The pin comes from the adapter that would actually do the scoring, never rebuilt
+    beside it from the config. Those two are not the same thing: a config that sets no
+    `judge.params` still produces requests carrying the adapter's own defaults, so a pin
+    built from the config alone describes an instrument that was never used. Building it
+    twice is how a ledger ends up with a `params_hash` that no run can reproduce.
+
     `--simulate` is part of the judge's identity, not a testing convenience bolted on
     beside it: a simulated judge and a hosted one are different measuring instruments, so
     switching between them must trip the pin check exactly like any other judge change.
     """
-    if simulate:
-        return _judge_adapter(cfg, simulate=True).pin()
-    rubric = cfg.judge.rubric
-    if not rubric.exists():
-        _die(
-            f"judge rubric not found at {rubric}",
-            "point `judge.rubric` in benchlock.yaml at the rubric/system prompt your judge "
-            "uses; its exact text is hashed into the judge pin",
-        )
-    return JudgePin.build(
-        provider=cfg.judge.provider.value,
-        model=cfg.judge.model,
-        rubric_text=rubric.read_text(encoding="utf-8"),
-        params=cfg.judge.params.model_dump(mode="json", exclude_none=True),
-        scale=cfg.score_scale,
-    )
+    return _judge_adapter(cfg, simulate=simulate).pin()
 
 
 def _relativise(path: Path, root: Path) -> Path:
@@ -219,11 +212,12 @@ anchor:
 
 judge:
   provider: anthropic
-  model: {found.judge_model or "claude-sonnet-4-5-20250929"}
+  model: {found.judge_model or "claude-sonnet-5"}
   rubric: ./evals/rubric.md   # the exact text is hashed into the judge pin
-  params:
-    temperature: 0.0
-    max_tokens: 512
+  # No `params` on purpose: the adapter's defaults are the ones that work with the model
+  # above. Current models reject `temperature`/`top_p` with a 400. Anything you set here
+  # is hashed into the judge pin, so changing it later needs `benchlock rebaseline`.
+  cache_busting_nonce: false   # true if your provider caches identical judge prompts
 
 gate:
   # A judge change must NOT fail your build. It must tell you to re-baseline.
@@ -300,13 +294,89 @@ def _judge_adapter(
             model=f"simulated::{cfg.judge.model}",
             rubric_text=rubric.read_text(encoding="utf-8") if rubric.exists() else "rubric",
         )
-    _die(
-        f"no judge adapter is wired for provider `{cfg.judge.provider.value}` yet",
+    rubric = cfg.judge.rubric
+    if not rubric.exists():
+        _die(
+            f"judge rubric not found at {rubric}",
+            "point `judge.rubric` in benchlock.yaml at the rubric/system prompt your judge "
+            "uses; its exact text is hashed into the judge pin",
+        )
+    rubric_text = rubric.read_text(encoding="utf-8")
+    # Only what the config actually sets. An empty dict means "use the adapter's own
+    # defaults", which are the ones chosen to work with the models that adapter names.
+    params = cfg.judge.params.model_dump(mode="json", exclude_none=True)
+
+    if cfg.judge.provider is ProviderKind.ANTHROPIC:
+        try:
+            from benchlock.judge.anthropic import AnthropicJudge
+        except ImportError:  # pragma: no cover - exercised by the extras, not the suite
+            _die(
+                "the `anthropic` package is not installed",
+                "install the optional extra: `uv pip install 'benchlock[anthropic]'`, or "
+                "pass --simulate to use the built-in judge, which needs no key",
+            )
+        anthropic_judge = AnthropicJudge(
+            model=cfg.judge.model, rubric_text=rubric_text, scale=cfg.score_scale
+        )
+        if params:
+            anthropic_judge.params = params
+        return anthropic_judge
+
+    if cfg.judge.provider is ProviderKind.OPENAI:
+        try:
+            from benchlock.judge.openai import OpenAIJudge
+        except ImportError:  # pragma: no cover - exercised by the extras, not the suite
+            _die(
+                "the `openai` package is not installed",
+                "install the optional extra: `uv pip install 'benchlock[openai]'`, or "
+                "pass --simulate to use the built-in judge, which needs no key",
+            )
+        openai_judge = OpenAIJudge(
+            model=cfg.judge.model, rubric_text=rubric_text, scale=cfg.score_scale
+        )
+        if params:
+            openai_judge.params = params
+        return openai_judge
+
+    _die(  # pragma: no cover - ProviderKind has no third member
+        f"no judge adapter is wired for provider `{cfg.judge.provider.value}`",
         "pass --simulate to use the deterministic built-in judge, which needs no API key",
     )
 
 
-def _anchor_candidates(cfg: BenchlockConfig, path: Path | None) -> list[AnchorItem]:
+def _ingest(cfg: BenchlockConfig, path: Path) -> tuple[Observation, ...]:
+    """Read one run's scores with the adapter the config actually names.
+
+    `benchlock init` detects promptfoo / Inspect AI / DeepEval and writes the answer into
+    `system.adapter`. Reading every file as JSONL regardless would make that detection
+    worse than useless: a valid promptfoo export would be reported back to the user as
+    malformed JSON, one error per line, naming their file rather than our dispatch.
+    """
+    scale = cfg.score_scale
+    if cfg.system.adapter is AdapterKind.PROMPTFOO:
+        from benchlock.adapters.promptfoo import load as load_promptfoo
+
+        return load_promptfoo(path, scale)
+    if cfg.system.adapter is AdapterKind.INSPECT_AI:
+        from benchlock.adapters.inspect_ai import load as load_inspect
+
+        return load_inspect(path, scale)
+    if cfg.system.adapter is AdapterKind.DEEPEVAL:
+        from benchlock.adapters.deepeval import load as load_deepeval
+
+        return load_deepeval(path, scale)
+    return load_jsonl(path, scale)
+
+
+AnchorStoreOpt = Annotated[
+    Path, typer.Option("--anchor-store", help="Where the frozen anchor pairs are kept.")
+]
+DEFAULT_ANCHOR_STORE = Path(".benchlock/anchors.jsonl")
+
+
+def _anchor_candidates(
+    cfg: BenchlockConfig, path: Path | None, store: Path = DEFAULT_ANCHOR_STORE
+) -> list[AnchorItem]:
     """Load the pairs to freeze: an explicit file, or the existing frozen set."""
     if path is not None:
         if not path.exists():
@@ -339,17 +409,31 @@ def _anchor_candidates(cfg: BenchlockConfig, path: Path | None) -> list[AnchorIt
             )
         return items
     try:
-        return load_anchors()
+        return load_anchors(store)
     except AnchorModeError as exc:
         _die(exc.message, exc.hint)
 
 
-def _rescore_and_record(book: Ledger, cfg: BenchlockConfig, *, simulate: bool) -> None:
+def _rescore_and_record(
+    book: Ledger,
+    cfg: BenchlockConfig,
+    *,
+    simulate: bool,
+    run_index: int,
+    store: Path = DEFAULT_ANCHOR_STORE,
+) -> None:
     """Re-score the frozen anchor set for this run and append it as an anchor run.
 
     This is what makes the control group a *control*: the same frozen outputs, judged
     again, every run. Without it the anchor stream stops at the baseline and nothing can
     tell you the judge moved.
+
+    ``run_index`` is the index of the SYSTEM run this scoring accompanies, not a counter
+    over anchor records. The difference-in-differences stream joins the two legs on
+    ``run_index`` (`engine._corrected_stream`), so numbering anchor runs independently
+    silently lags the control leg by the K noise-floor replicates — every paired
+    comparison would then contrast a system run against an anchor scoring taken K runs
+    earlier, which is the one thing the design exists to avoid.
     """
     from benchlock.anchor.modes import FrozenAnchor, rescore
 
@@ -360,7 +444,7 @@ def _rescore_and_record(book: Ledger, cfg: BenchlockConfig, *, simulate: bool) -
             "run `benchlock baseline` first",
         )
     try:
-        items = load_anchors()
+        items = load_anchors(store)
     except AnchorModeError as exc:
         _die(exc.message, exc.hint)
 
@@ -372,6 +456,21 @@ def _rescore_and_record(book: Ledger, cfg: BenchlockConfig, *, simulate: bool) -
     except AnchorModeError as exc:
         _die(exc.message, exc.hint)
 
+    # The frozen set must still be the frozen set. `observe --kind anchor` checks this;
+    # this path is the one CI actually uses (`--rescore-anchors`, and the shipped GitHub
+    # Action defaults it on), and an anchor run scored on a different item set reads as
+    # exactly zero movement rather than as an error — a judge shift then looks like a
+    # system regression. Same check, same rule (Hard Rule 8).
+    observed = replace(
+        anchor_pin,
+        item_set_hash=suite_hash_of(sorted(scores)),
+        n=len(scores),
+    )
+    try:
+        check_anchor_pin(observed, anchor_pin)
+    except PinViolationError as exc:
+        _die(exc.message, exc.hint)
+
     frozen = FrozenAnchor(
         pin=anchor_pin,
         baseline_scores={},
@@ -379,7 +478,7 @@ def _rescore_and_record(book: Ledger, cfg: BenchlockConfig, *, simulate: bool) -
         judge_pin=_judge_pin(cfg, simulate=simulate),
         mode=anchor_pin.mode,
     )
-    _append_anchor_run(book, cfg, scores, frozen, run_index=existing_anchor_runs)
+    _append_anchor_run(book, cfg, scores, frozen, run_index=run_index)
     mean = sum(scores.values()) / len(scores)
     typer.echo(f"  re-scored {len(scores)} anchor items: mean {mean:.4f}")
 
@@ -496,7 +595,13 @@ def init(
     typer.echo("next:")
     typer.echo("  1. confirm `score_scale` matches your rubric's range")
     typer.echo("  2. point `judge.rubric` at your rubric/system prompt")
-    typer.echo("  3. benchlock plan --target-shift 0.05    # size the anchor set")
+    # `plan` reads the noise floor that `baseline` measures, so recommending it first
+    # sends a first-time user straight into an error on the very command we told them
+    # to run. Baseline comes first, and says why.
+    typer.echo("  3. benchlock baseline --anchors your-suite.jsonl")
+    typer.echo("       freezes the anchors and measures the noise floor")
+    typer.echo("  4. benchlock plan --target-shift 0.05")
+    typer.echo("       sizes the anchor set against that measured floor")
 
 
 @app.command()
@@ -593,9 +698,7 @@ def baseline(
         Path | None,
         typer.Option("--anchors", help="JSONL of anchor pairs to freeze."),
     ] = None,
-    anchor_store: Annotated[
-        Path, typer.Option("--anchor-store", help="Where the frozen pairs are kept.")
-    ] = Path(".benchlock/anchors.jsonl"),
+    anchor_store: AnchorStoreOpt = DEFAULT_ANCHOR_STORE,
     simulate: Annotated[
         bool,
         typer.Option("--simulate", help="Use the deterministic built-in judge (no API key)."),
@@ -609,7 +712,7 @@ def baseline(
     except AnchorModeError as exc:
         _die(exc.message, exc.hint)
 
-    items = _anchor_candidates(cfg, anchors)
+    items = _anchor_candidates(cfg, anchors, anchor_store)
     suite = [Candidate(item_id=i.item_id, score=0.5, tags=i.tags) for i in items]
     if len(items) > cfg.anchor.n:
         selection = select_anchors(
@@ -627,7 +730,18 @@ def baseline(
         f"with {judge.describe().provider}/{judge.describe().model}..."
     )
     try:
-        frozen = freeze(items, judge, replicates=cfg.anchor.noise_replicates, mode=cfg.anchor.mode)
+        # The nonce has to reach the replicates too. The noise floor is measured by asking
+        # the judge the SAME question K times; behind a provider that caches responses,
+        # K byte-identical prompts return one cached answer K times and the floor comes
+        # back as exactly zero — after which any later movement reads as drift. Measuring
+        # the floor with a cacheable prompt is the one place a cache does most damage.
+        frozen = freeze(
+            items,
+            judge,
+            replicates=cfg.anchor.noise_replicates,
+            mode=cfg.anchor.mode,
+            nonce_prefix=new_run_id() if cfg.judge.cache_busting_nonce else "",
+        )
     except AnchorModeError as exc:
         _die(exc.message, exc.hint)
 
@@ -679,6 +793,7 @@ def observe(
             help="Also re-score the frozen anchor set with the judge and record it.",
         ),
     ] = False,
+    anchor_store: AnchorStoreOpt = DEFAULT_ANCHOR_STORE,
     simulate: Annotated[
         bool, typer.Option("--simulate", help="Use the deterministic built-in judge.")
     ] = False,
@@ -713,7 +828,7 @@ def observe(
 
     for appended, path in enumerate(results):
         try:
-            observations = load_jsonl(path, cfg.score_scale)
+            observations = _ingest(cfg, path)
         except IngestError as exc:
             typer.secho(exc.render(), fg=typer.colors.RED, err=True)
             raise typer.Exit(EXIT_ERROR) from exc
@@ -769,7 +884,22 @@ def observe(
         )
 
         if rescore_anchors and stream is StreamKind.SYSTEM:
-            _rescore_and_record(book, cfg, simulate=simulate)
+            # `anchor.cadence` is what the user set to control judge spend, and what
+            # `benchlock plan` provisioned against. Ignoring it here meant a team that set
+            # cadence 5 to cut anchor scoring to a fifth paid the full anchor set on every
+            # CI run, with nothing in the output saying the setting had been dropped.
+            # Skipped runs simply yield fewer paired runs, which the corrected stream
+            # already handles by intersecting on run_index.
+            if run.run_index % cfg.anchor.cadence == 0:
+                _rescore_and_record(
+                    book, cfg, simulate=simulate, run_index=run.run_index, store=anchor_store
+                )
+            else:
+                nxt = (run.run_index // cfg.anchor.cadence + 1) * cfg.anchor.cadence
+                typer.echo(
+                    f"  anchors not re-scored: `anchor.cadence` is {cfg.anchor.cadence}, "
+                    f"so the next anchor run is system run {nxt}"
+                )
 
 
 @app.command()
