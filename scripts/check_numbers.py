@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Hard Rule 5: every number in README.md and RESULTS.md must trace to a committed run.
+"""Hard Rule 5: every number in the public-facing documents must trace to a committed run.
 
-Greps both documents for numeric literals and fails on any that cannot be found in
+Greps those documents for numeric literals and fails on any that cannot be found in
 `bench/results/`. This is the check that makes "we never report a number we didn't
 measure" enforceable rather than aspirational — a claim in a README is exactly where an
 invented number would hide.
@@ -19,7 +19,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
 RESULTS = ROOT / "bench" / "results"
-DOCS = ("README.md", "RESULTS.md")
+DOCS = ("README.md", "RESULTS.md", "docs/launch.md", "CHANGELOG.md")
 
 #: Numbers that are structural rather than measured: version strings, alpha, list markers,
 #: years, and the small integers that appear in prose ("three demos", "five verdicts").

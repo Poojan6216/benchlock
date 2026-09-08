@@ -91,7 +91,7 @@ but cannot fully verify.**
 
 ## 7.9 provider-side response caching
 
-**Measured failure rate: 100%.** DEFENDED by a per-run nonce: drift visible in 0/20 runs without it, 20/20 with it. NOTE: the nonce's measured effect on the mean score here is 0.0000, but that is an artefact of the simulated judge, whose nonce touches only the cache key. Whether a nonce perturbs a REAL judge's scores is UNMEASURED: Tier 2 used a nonce on every replicate call but never scored the same items with and without one, so the mitigation's own confounding effect is an open question rather than a verified non-issue
+**Measured failure rate: 100%.** WORKS AGAINST THE SHIPPED DEFAULT, defensible by configuration. `judge.cache_busting_nonce` is FALSE unless you set it, so the 100% failure rate above is the out-of-the-box behaviour, not a hypothetical: drift visible in 0/20 runs without the nonce, 20/20 with it. Turning it on defends the attack completely in this simulation. NOTE: the nonce's measured effect on the mean score here is 0.0000, but that is an artefact of the simulated judge, whose nonce touches only the cache key. Whether a nonce perturbs a REAL judge's scores is UNMEASURED: Tier 2 used a nonce on every replicate call but never scored the same items with and without one, so the mitigation's own confounding effect is an open question rather than a verified non-issue
 
 If your provider serves a cached response for an identical prompt, the anchor set returns
 *yesterday's answers*. The anchor stream looks perfectly stable, real judge drift becomes

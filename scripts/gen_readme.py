@@ -173,6 +173,13 @@ on-call engineer starts bisecting.
 
 {demo_block("Demo 1 — the phantom regression")}
 
+**This transcript is a real run of the shipped tool over a *synthetic* stream.** The
+verdict, the e-values and the intervals are what `benchlock verdict` actually printed; the
+scores it read were generated with a known ground truth, and the model name in the last
+line is the fixture's label, not a judge anyone called. That is the only way to show a
+correct attribution against a *known* answer — the real-judge results are further down and
+are labelled as such.
+
 Ground truth: the provider rotated the judge snapshot behind a stable model string. The
 system under test was byte-identical throughout. **The rollback would have been pure waste,
 and `benchlock gate` exits 0 — a judge change must not fail your build.**
@@ -288,8 +295,10 @@ out in [docs/identification.md](docs/identification.md).
 
 ## Install
 
+Not on PyPI yet, so install it from this repository:
+
 ```sh
-uv tool install benchlock
+uv tool install git+https://github.com/Poojan6216/benchlock
 ```
 
 ```sh

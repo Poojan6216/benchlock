@@ -28,6 +28,7 @@ GENERATORS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("scripts/gen_guarantees.py", ("docs/statistical-guarantees.md",)),
     ("scripts/gen_threat_model.py", ("docs/threat-model.md",)),
     ("scripts/gen_writeup.py", ("docs/writeup.md",)),
+    ("scripts/gen_launch.py", ("docs/launch.md",)),
     ("scripts/gen_readme.py", ("README.md",)),
 )
 

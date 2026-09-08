@@ -574,8 +574,12 @@ def provider_caching(trials: int = 20) -> AttackResult:
         description="a cached judge returns yesterday's answers, hiding real drift",
         failure_rate=1.0 - without_nonce / trials,
         status=(
-            f"DEFENDED by a per-run nonce: drift visible in {without_nonce}/{trials} runs "
-            f"without it, {with_nonce}/{trials} with it. NOTE: the nonce's measured effect "
+            "WORKS AGAINST THE SHIPPED DEFAULT, defensible by configuration. "
+            "`judge.cache_busting_nonce` is FALSE unless you set it, so the 100% failure "
+            "rate above is the out-of-the-box behaviour, not a hypothetical: drift "
+            f"visible in {without_nonce}/{trials} runs without the nonce, "
+            f"{with_nonce}/{trials} with it. Turning it on defends the attack completely "
+            "in this simulation. NOTE: the nonce's measured effect "
             f"on the mean score here is {nonce_effect:.4f}, but that is an artefact of the "
             "simulated judge, whose nonce touches only the cache key. Whether a nonce "
             "perturbs a REAL judge's scores is UNMEASURED: Tier 2 used a nonce on every "
@@ -589,6 +593,7 @@ def provider_caching(trials: int = 20) -> AttackResult:
             "drift_visible_runs_no_cache": no_cache,
             "nonce_effect_on_mean_score_SIMULATED": nonce_effect,
             "nonce_effect_is_measurable_only_against_a_real_judge": True,
+            "nonce_enabled_by_default": False,
             "trials": trials,
         },
     )
