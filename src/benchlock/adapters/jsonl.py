@@ -284,6 +284,44 @@ def load(
                 )
             ],
         )
+    # A directory and a binary file are the two most common wrong answers here, and both
+    # are ones the tool invites: `benchlock init` writes a directory as `system.path` when
+    # it detects nothing, and the Inspect AI log it *does* detect is a binary archive.
+    # Neither is a JSONDecodeError, so without these they escape as a raw traceback —
+    # Hard Rule 10 says the user gets a sentence, not a stack.
+    if path.is_dir():
+        raise IngestError(
+            str(path),
+            [
+                IngestIssue(
+                    line=0,
+                    message="this is a directory, not a score file",
+                    hint="point `system.path` at the file your eval framework writes, or "
+                    "pass the file directly: `benchlock observe path/to/results.jsonl`",
+                )
+            ],
+        )
+    try:
+        path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise IngestError(
+            str(path),
+            [
+                IngestIssue(
+                    line=0,
+                    message=(
+                        f"not UTF-8 text, so it is not JSONL ({exc.reason} at byte {exc.start})"
+                    ),
+                    hint="this looks like a binary file. If it is an Inspect AI `.eval` "
+                    "archive, set `system.adapter: inspect_ai` in benchlock.yaml",
+                )
+            ],
+        ) from exc
+    except OSError as exc:
+        raise IngestError(
+            str(path),
+            [IngestIssue(line=0, message=f"cannot be read: {exc.strerror or exc}", hint="")],
+        ) from exc
     return parse_records(
         iter_jsonl(path),
         scale,

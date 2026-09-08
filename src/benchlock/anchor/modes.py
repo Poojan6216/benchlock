@@ -245,10 +245,30 @@ def load_anchors(path: Path = DEFAULT_ANCHOR_STORE) -> list[AnchorItem]:
             "run `benchlock baseline` to freeze one and measure the judge's noise floor",
         )
     items: list[AnchorItem] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
+    # The store is written non-atomically, so an interrupted `baseline` leaves a half
+    # line behind. Every caller here catches AnchorModeError and nothing else, so a bare
+    # json.loads would escape as a traceback — and it would do so from `observe
+    # --rescore-anchors`, i.e. AFTER the system run has already been committed to an
+    # append-only ledger. The user needs to be told which file and which line.
+    for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
         if not line.strip():
             continue
-        data = json.loads(line)
+        try:
+            data = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise AnchorModeError(
+                f"the frozen anchor store at {path} is corrupt: line {line_no} is not "
+                f"valid JSON ({exc.msg})",
+                "this usually means a `benchlock baseline` was interrupted while writing. "
+                "Re-run `benchlock baseline --anchors <your-suite>` to freeze it again, "
+                "and start a new epoch with `benchlock rebaseline` if the set has changed",
+            ) from exc
+        if not isinstance(data, dict) or "item_id" not in data:
+            raise AnchorModeError(
+                f"the frozen anchor store at {path} is corrupt: line {line_no} has no `item_id`",
+                "every line must be a JSON object with at least an `item_id`; re-run "
+                "`benchlock baseline --anchors <your-suite>` to rewrite the store",
+            )
         items.append(
             AnchorItem(
                 item_id=data["item_id"],
