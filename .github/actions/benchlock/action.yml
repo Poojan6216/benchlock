@@ -27,6 +27,20 @@ inputs:
     description: Re-score the frozen anchor set as part of this run.
     required: false
     default: "true"
+  ref:
+    description: The benchlock git ref to install. Pin this to a tag for reproducible runs.
+    required: false
+    default: main
+  anthropic-api-key:
+    description: >-
+      API key for the judge. REQUIRED whenever rescore-anchors is true, because
+      re-scoring the frozen anchor set calls your judge. Pass a secret, never a literal.
+    required: false
+    default: ""
+  openai-api-key:
+    description: API key for the judge when `judge.provider` is `openai`.
+    required: false
+    default: ""
 
 outputs:
   verdict:
@@ -39,12 +53,34 @@ outputs:
 runs:
   using: composite
   steps:
+    # Not on PyPI, so `pipx install benchlock` cannot work and would fail every run of
+    # this action. Installed from the repository instead, pinned to a ref the caller can
+    # change; this becomes a released version the day the package is published.
     - name: Install benchlock
       shell: bash
-      run: pipx install benchlock || pip install --user benchlock
+      run: pipx install "benchlock[anthropic] @ git+https://github.com/Poojan6216/benchlock@${{ inputs.ref }}"
+
+    # Re-scoring the anchors calls the judge, so it needs a key. Failing here with a
+    # sentence naming the missing input beats failing three steps later inside the
+    # adapter with "no Anthropic API key found" and no hint that this action has an
+    # input for it.
+    - name: Check the judge is reachable
+      if: ${{ inputs.rescore-anchors == 'true' }}
+      shell: bash
+      env:
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        OPENAI_API_KEY: ${{ inputs.openai-api-key }}
+      run: |
+        if [ -z "$ANTHROPIC_API_KEY" ] && [ -z "$OPENAI_API_KEY" ]; then
+          echo "::error::rescore-anchors is true, which re-scores the frozen anchor set with your judge, but no API key was supplied. Pass anthropic-api-key (or openai-api-key) from a repository secret, or set rescore-anchors: false and record anchor runs yourself." >&2
+          exit 1
+        fi
 
     - name: Record this run
       shell: bash
+      env:
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        OPENAI_API_KEY: ${{ inputs.openai-api-key }}
       run: |
         benchlock observe "${{ inputs.results }}" \
           --config "${{ inputs.config }}" \

@@ -29,11 +29,25 @@ anchor:
 
 judge:
   provider: anthropic
-  model: claude-sonnet-4-5-20250929   # the exact dated snapshot
+  model: claude-sonnet-5
   rubric: ./evals/rubric.md
-  params:
-    temperature: 0.0
-    max_tokens: 512
+
+  # Leave `params` out entirely unless you need to override something. The adapter's own
+  # defaults are chosen to work with the models it names, and current Anthropic models
+  # REJECT `temperature` and `top_p` with a 400 — `thinking` and `output_config.effort`
+  # replaced them. Whatever you write here is hashed into the judge pin, so changing it
+  # is a judge change and requires `benchlock rebaseline` (Hard Rule 8).
+  # params:
+  #   max_tokens: 16
+  #   thinking: { type: disabled }
+  #   output_config: { effort: low }
+
+  # Provider-side response caching can serve the same judge reply for the same anchor
+  # prompt run after run, which makes the anchor stream read as perfectly flat while the
+  # judge drifts — measured as a 100% attack success in the adversarial suite. This puts
+  # a per-run nonce in the anchor prompt to defeat it. It is OFF by default because it
+  # changes the prompt the judge sees; turn it on if your provider caches.
+  cache_busting_nonce: false
 
 gate:
   # A judge change must NOT fail your build. It must tell you to re-baseline.

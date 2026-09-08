@@ -35,8 +35,10 @@ anthropic = ["anthropic>=0.40"]
 openai = ["openai>=1.40"]
 
 [project.urls]
-Homepage = "https://github.com/benchlock/benchlock"
-Repository = "https://github.com/benchlock/benchlock"
+Homepage = "https://github.com/Poojan6216/benchlock"
+Repository = "https://github.com/Poojan6216/benchlock"
+Issues = "https://github.com/Poojan6216/benchlock/issues"
+Changelog = "https://github.com/Poojan6216/benchlock/blob/main/CHANGELOG.md"
 
 [project.scripts]
 benchlock = "benchlock.cli:main"
