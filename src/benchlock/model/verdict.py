@@ -120,6 +120,11 @@ class Attribution:
     reasons: tuple[str, ...]  # human-readable, shown in the verdict block
     evidence: Evidence
     alpha: float
+    #: The monitoring band this verdict was decided under. Recorded because it CHANGES the
+    #: verdict — it sets both streams' scale and the race's target — so a replay that
+    #: substituted its own value would compare a historical decision against a different
+    #: question and report the difference as a regression.
+    target_shift: float = 0.05
     next_command: str = ""  # the command that acts on this verdict, if any
     epoch_reason: str = ""  # why the current baseline epoch was started
 
@@ -134,6 +139,7 @@ class Attribution:
             "reasons": list(self.reasons),
             "evidence": self.evidence.to_json(),
             "alpha": self.alpha,
+            "target_shift": self.target_shift,
             "next_command": self.next_command,
             "epoch_reason": self.epoch_reason,
         }

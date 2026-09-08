@@ -60,6 +60,7 @@ def apply_lattice(
     evidence: Evidence,
     alpha: float,
     *,
+    target_shift: float = 0.05,
     min_runs: int,
     min_obs: int,
     observations_in_last_run: int,
@@ -106,6 +107,7 @@ def apply_lattice(
             ),
             evidence=evidence,
             alpha=alpha,
+            target_shift=target_shift,
             epoch_reason=epoch_reason,
         )
 
@@ -138,6 +140,7 @@ def apply_lattice(
             ),
             evidence=evidence,
             alpha=alpha,
+            target_shift=target_shift,
             next_command="benchlock report",
             epoch_reason=epoch_reason,
         )
@@ -159,6 +162,7 @@ def apply_lattice(
             reasons=tuple(reasons),
             evidence=evidence,
             alpha=alpha,
+            target_shift=target_shift,
             next_command="benchlock rebaseline --reason judge-version-change",
             epoch_reason=epoch_reason,
         )
@@ -184,6 +188,7 @@ def apply_lattice(
             ),
             evidence=evidence,
             alpha=alpha,
+            target_shift=target_shift,
             next_command="benchlock plan --target-shift 0.05",
             epoch_reason=epoch_reason,
         )
@@ -204,6 +209,7 @@ def apply_lattice(
             ),
             evidence=evidence,
             alpha=alpha,
+            target_shift=target_shift,
             next_command="benchlock report",
             epoch_reason=epoch_reason,
         )
@@ -218,5 +224,6 @@ def apply_lattice(
         ),
         evidence=evidence,
         alpha=alpha,
+        target_shift=target_shift,
         epoch_reason=epoch_reason,
     )

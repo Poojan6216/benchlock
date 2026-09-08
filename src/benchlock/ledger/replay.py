@@ -19,7 +19,7 @@ Three things it catches, and they are different failures:
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 import benchlock
@@ -123,9 +123,21 @@ def replay(ledger: Ledger, config: AttributionConfig) -> ReplayReport:
         at_system = int(payload["at_system_run"])
         at_anchor = int(payload["at_anchor_run"])
 
+        # Decide under the parameters the ORIGINAL verdict was decided under, not under
+        # whatever this replay was invoked with. `alpha` and `target_shift` both change
+        # which verdict comes out, so substituting today's values would re-ask a different
+        # question and then report the different answer as a divergence — an audit that
+        # cries regression whenever a flag differs is worse than no audit. Verdicts written
+        # before `target_shift` was recorded fall back to the caller's value, which is the
+        # best available guess and is the historical behaviour.
+        at_config = replace(
+            config,
+            alpha=float(recorded.get("alpha", config.alpha)),
+            target_shift=float(recorded.get("target_shift", config.target_shift)),
+        )
         try:
             replayed = decide(
-                _prefix(system_all, at_system), _prefix(anchor_all, at_anchor), config
+                _prefix(system_all, at_system), _prefix(anchor_all, at_anchor), at_config
             )
         except AttributionRefusedError as exc:
             refusals.append(

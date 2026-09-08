@@ -329,6 +329,7 @@ def decide(
     return apply_lattice(
         evidence,
         alpha,
+        target_shift=config.target_shift,
         min_runs=config.min_runs,
         min_obs=config.min_obs,
         observations_in_last_run=system_runs[-1].n if system_runs else 0,
