@@ -40,8 +40,8 @@ is not 5%. Over 500 drift-free streams inspected after every one of
 
 | | false alarm on a healthy pipeline |
 |---|---:|
-| t-test re-run every run | **21.2%** |
-| the same, Bonferroni-corrected | **7.4%** |
+| t-test re-run every run | **20.8%** |
+| the same, Bonferroni-corrected | **7.0%** |
 | anytime-valid | **0.0%** |
 
 Peeking is not a misuse of the test. It *is* the workflow. And Bonferroni over
@@ -79,7 +79,7 @@ have the judge re-score them every run. If those move, only the judge can have m
 It is difference-in-differences, with the anchor set as the control group.
 
 Across the judge-truth cells of the grid, judge-to-system misattribution is **0.63**
-without a control group and **0.02** with one — with **0.10** landing in
+without a control group and **0.03** with one — with **0.10** landing in
 `indeterminate` rather than being guessed at.
 
 That second figure is a mean, and means hide tails. The failures are concentrated in one
@@ -96,10 +96,10 @@ flattering summary this project was built to catch.
 
 | | peeking t-test | anytime-valid |
 |---|---:|---:|
-| mean median detection delay | **3.2 runs** | **25.1 runs** |
-| false alarm on healthy pipelines | **21.2%** | **0.0%** |
+| mean median detection delay | **3.5 runs** | **24.6 runs** |
+| false alarm on healthy pipelines | **20.8%** | **0.0%** |
 
-Roughly **8× slower**. That is the price, it is real, and if a
+Roughly **7× slower**. That is the price, it is real, and if a
 false rollback is cheap for you while slow detection is expensive, the t-test is the better
 tool and you should use it.
 
@@ -169,7 +169,7 @@ identical repeats of the same 200 items declined between 7 and
 That last one is a hole in this tool. Benchlock watches scores; a refused item silently
 leaves the sample. On the one real-judge scenario Benchlock gets wrong — the effort change —
 the configuration moved refusals without moving scores, and the verdict came back `stable`.
-5 of 6 correct is the honest number, and the sixth is in the results
+4 of 6 correct is the honest number, and the sixth is in the results
 table.
 
 ---

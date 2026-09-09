@@ -13,15 +13,15 @@ One number, one link, one honest caveat. No thread.
 > the provider rotated the judge snapshot underneath you.
 >
 > I measured how often the standard approach gets this wrong. A t-test re-run on every CI
-> commit raises a false alarm on **21.2% of perfectly healthy pipelines**, and when
+> commit raises a false alarm on **20.8% of perfectly healthy pipelines**, and when
 > only the judge moved it says "regression" **100% of the time**.
 >
 > Benchlock holds a frozen anchor set your system never touches, so if those scores move,
 > only the judge can have moved them. **0.0%** false alarms, and it names the judge
 > **100%** of the time.
 >
-> The honest caveat: it detects a real regression about **7.7× slower** than the
-> invalid test — 25.1 runs against 3.2. That is the price of a
+> The honest caveat: it detects a real regression about **7.0× slower** than the
+> invalid test — 24.6 runs against 3.5. That is the price of a
 > guarantee that survives daily peeking, and it is in the results table, not a footnote.
 >
 > 6 of 8 attacks still beat it. Those are published too.
@@ -62,7 +62,7 @@ anything. Renders in both light and dark GitHub themes.
 - No "enterprise-grade". No "revolutionise". The tool tells you which of two things moved;
   it does not make your evals correct.
 - Do not lead with the false-alarm number alone. Lead with `indeterminate`, or with the
-  7.7× delay. The interesting claim is that the tool refuses to answer when it
+  7.0× delay. The interesting claim is that the tool refuses to answer when it
   cannot know, and that its honest cost is published.
 - Do not quote a number from memory or from an older draft of this file. Every figure above
   is generated; `uv run python scripts/check_generated.py` fails if this document and its

@@ -10,7 +10,7 @@ Every number here comes from a committed run in `bench/results/` and names the c
 Over 500 drift-free streams, each inspected after **every one** of
 142 runs, at `alpha=0.05`:
 
-- **The peeking t-test raises at least one false alarm on 21.2% of healthy pipelines.**
+- **The peeking t-test raises at least one false alarm on 20.8% of healthy pipelines.**
 - **Benchlock: 0.0%.**
 
 Peeking is not a misuse of the t-test here. It is the workflow — CI runs on every commit,
@@ -32,11 +32,11 @@ criticism of the people using it — and it is exactly the gap the anchor set fi
 | method | false alarm (drift-free) | ARL₀ | says "regression"/"system" | says `judge` | says `indeterminate` | misses it |
 |---|---:|---:|---:|---:|---:|---:|
 | B0 fixed threshold | 0.000 | 142.0 | 100% | 0% | 0% | 0% |
-| B1 peeking t-test | 0.212 | 114.6 | 100% | 0% | 0% | 0% |
-| B2 Bonferroni t-test | 0.074 | 131.8 | 100% | 0% | 0% | 0% |
+| B1 peeking t-test | 0.208 | 114.4 | 100% | 0% | 0% | 0% |
+| B2 Bonferroni t-test | 0.070 | 132.1 | 100% | 0% | 0% | 0% |
 | B3 CUSUM | 0.000 | 142.0 | 100% | 0% | 0% | 0% |
-| B4 ADWIN | 0.000 | 142.0 | 0% | 0% | 0% | 100% |
-| B4 DDM | 0.000 | 142.0 | 1% | 0% | 0% | 99% |
+| B4 ADWIN | 0.004 | 141.8 | 100% | 0% | 0% | 0% |
+| B4 DDM | 0.036 | 138.2 | 100% | 0% | 0% | 0% |
 | B5 Benchlock, no anchor | 0.000 | 142.0 | 100% | 0% | 0% | 0% |
 | B6 **Benchlock** | 0.000 | 142.0 | 0% | 100% | 0% | 0% |
 
@@ -50,8 +50,8 @@ a bug to be fixed — it is the price of the guarantee.**
 
 | | B1 peeking t-test | B6 Benchlock |
 |---|---:|---:|
-| mean median detection delay (runs) | 3.2 | 25.1 |
-| false-alarm rate on drift-free streams | 0.212 | 0.000 |
+| mean median detection delay (runs) | 3.5 | 24.6 |
+| false-alarm rate on drift-free streams | 0.208 | 0.000 |
 
 B1 detects a real regression sooner. It also raises a false alarm on 21% of
 perfectly healthy pipelines, and it cannot tell you whether what moved was your system or
@@ -73,14 +73,14 @@ constantly wins.
 
 | method | false alarm | ARL₀ | detection rate | judge→system | system→judge | indeterminate |
 |---|---:|---:|---:|---:|---:|---:|
-| B0 fixed threshold | 0.034 | 51.0 | 0.81 | 0.66 | 0.00 | 0.00 |
-| B1 peeking t-test | 0.236 | 42.1 | 0.85 | 0.94 | 0.00 | 0.00 |
-| B2 Bonferroni t-test | 0.086 | 48.2 | 0.87 | 0.86 | 0.00 | 0.00 |
-| B3 CUSUM | 0.003 | 51.9 | 0.84 | 0.65 | 0.00 | 0.00 |
-| B4 ADWIN | 0.000 | 52.0 | 0.00 | 0.00 | 0.00 | 0.00 |
-| B4 DDM | 0.017 | 51.6 | 0.01 | 0.01 | 0.00 | 0.00 |
+| B0 fixed threshold | 0.038 | 50.8 | 0.81 | 0.67 | 0.00 | 0.00 |
+| B1 peeking t-test | 0.208 | 42.8 | 0.85 | 0.94 | 0.00 | 0.00 |
+| B2 Bonferroni t-test | 0.093 | 47.9 | 0.87 | 0.86 | 0.00 | 0.00 |
+| B3 CUSUM | 0.004 | 51.9 | 0.84 | 0.66 | 0.00 | 0.00 |
+| B4 ADWIN | 0.011 | 51.7 | 0.93 | 0.87 | 0.00 | 0.00 |
+| B4 DDM | 0.200 | 42.9 | 0.81 | 0.86 | 0.00 | 0.00 |
 | B5 Benchlock, no anchor | 0.000 | 52.0 | 0.81 | 0.63 | 0.00 | 0.00 |
-| B6 **Benchlock** | 0.000 | 52.0 | 0.82 | 0.02 | 0.00 | 0.10 |
+| B6 **Benchlock** | 0.000 | 52.0 | 0.82 | 0.03 | 0.00 | 0.10 |
 
 `judge→system` is how often a method called a judge change a system regression, averaged
 over the judge-truth cells — the ones where that error is possible at all. `system→judge`
@@ -88,19 +88,20 @@ is the reverse, over system-truth cells. For single-stream methods the first col
 by construction whenever they fire, because "regression" is the only verdict available to
 them.
 
-**Where Benchlock's own misattribution concentrates.** The grid mean above is an average over 36 judge-truth cells and hides the shape of the failures, which are not spread evenly. The worst cell is a judge shift of 0.1 arriving at run 25 on `binary` scores with a noisy judge (per-item SD 0.16): there Benchlock returns `system` on **40%** of streams where only the judge moved — a confident, wrong rollback recommendation. A late change point leaves few post-change runs for the anchor process to accumulate evidence in, and a noisy judge widens the null it has to clear; the anchor leg then fails to cross while the corrected leg does. If your judge is noisy and your scores are coarse, this is the regime to know about.
+**Where Benchlock's own misattribution concentrates.** The grid mean above is an average over 36 judge-truth cells and hides the shape of the failures, which are not spread evenly. The worst cell is a judge shift of 0.1 arriving at run 25 on `binary` scores with a noisy judge (per-item SD 0.16): there Benchlock returns `system` on **49%** of streams where only the judge moved — a confident, wrong rollback recommendation. A late change point leaves few post-change runs for the anchor process to accumulate evidence in, and a noisy judge widens the null it has to clear; the anchor leg then fails to cross while the corrected leg does. If your judge is noisy and your scores are coarse, this is the regime to know about.
 
 ### Median detection delay, in runs
 
 | method | δs=0.02 | δs=0.05 | δs=0.1 |
 |---|---:|---:|---:|
-| B0 fixed threshold | 16.4 | 1.9 | 1.7 |
-| B1 peeking t-test | 6.8 | 2.4 | 0.5 |
-| B2 Bonferroni t-test | 12.2 | 5.1 | 1.1 |
-| B3 CUSUM | 16.9 | 3.8 | 0.2 |
-| B4 DDM | 13.1 | 4.8 | 3.3 |
-| B5 Benchlock, no anchor | 38.6 | 22.0 | 18.6 |
-| B6 **Benchlock** | 38.6 | 21.9 | 18.6 |
+| B0 fixed threshold | 13.9 | 2.3 | 1.7 |
+| B1 peeking t-test | 7.4 | 2.6 | 0.6 |
+| B2 Bonferroni t-test | 12.3 | 4.6 | 1.2 |
+| B3 CUSUM | 14.2 | 6.6 | 0.2 |
+| B4 ADWIN | 9.2 | 4.8 | 0.2 |
+| B4 DDM | 7.4 | 2.1 | 1.0 |
+| B5 Benchlock, no anchor | 35.9 | 21.7 | 18.6 |
+| B6 **Benchlock** | 35.9 | 21.7 | 18.6 |
 
     uv run python bench/sim/run_sim.py --all
 
@@ -171,7 +172,7 @@ Every refusal was a safety decline; there were 0 API errors in the run.
 
 ## Tier 2 — real judges
 
-Tier 2 streams are **constructed by resampling pooled real judge scores**, not observed longitudinally. A fixed item pool was scored once under each judge configuration; the time axis is built by splicing those pools at known change points. Two further constructions must be stated plainly. **The judge-change scenarios are real**: they splice scores that a real judge actually produced under two configurations. **The system-regression scenarios are not**: no degraded system was built, and the 'regression' is a fixed 0.10 subtracted from the baseline judge's real scores (`compose._pool_scores`, the `-degraded` suffix). That tests whether the attribution machinery separates a subtracted shift from a real judge change; it does not test whether a real judge notices a real system regression. Simulation supplies the statistical power, real judges supply the premise, and neither is a longitudinal production study. We have not run one.
+Tier 2 streams are **constructed by resampling pooled real judge scores**, not observed longitudinally. A fixed item pool was scored once under each judge configuration; the time axis is built by splicing those pools at known change points. Two further constructions must be stated plainly. **The judge-change scenarios are real**: they splice scores that a real judge actually produced under two configurations, on an anchor set that is **disjoint from the system suite** — 150 items each, from different halves of the pool, so the control group really is made of items the system under test never touches. **The system-regression scenarios are not real**: no degraded system was built, and the 'regression' is a fixed 0.10 subtracted from the baseline judge's real scores (`compose._pool_scores`, the `-degraded` suffix). That tests whether the attribution machinery separates a subtracted shift from a real judge change; it does not test whether a real judge notices a real system regression. Simulation supplies the statistical power, real judges supply the premise, and neither is a longitudinal production study. We have not run one.
 
 | configuration | model | what it is |
 |---|---|---|
@@ -190,7 +191,7 @@ Spend: **$3.05** over 2,456 scored calls (1,572,871 input tokens). 144 further c
 | judge-version-bump | judge | B1 peeking t-test | regression | ❌ |
 | judge-version-bump | judge | B2 Bonferroni t-test | regression | ❌ |
 | judge-version-bump | judge | B3 CUSUM | regression | ❌ |
-| judge-version-bump | judge | B4 ADWIN | stable | ❌ |
+| judge-version-bump | judge | B4 ADWIN | regression | ❌ |
 | judge-version-bump | judge | B4 DDM | stable | ❌ |
 | judge-version-bump | judge | B5 Benchlock, no anchor | regression | ❌ |
 | judge-version-bump | judge | B6 **Benchlock** | judge | ✅ |
@@ -198,24 +199,24 @@ Spend: **$3.05** over 2,456 scored calls (1,572,871 input tokens). 144 further c
 | judge-rubric-change | judge | B1 peeking t-test | regression | ❌ |
 | judge-rubric-change | judge | B2 Bonferroni t-test | regression | ❌ |
 | judge-rubric-change | judge | B3 CUSUM | regression | ❌ |
-| judge-rubric-change | judge | B4 ADWIN | stable | ❌ |
+| judge-rubric-change | judge | B4 ADWIN | regression | ❌ |
 | judge-rubric-change | judge | B4 DDM | stable | ❌ |
 | judge-rubric-change | judge | B5 Benchlock, no anchor | regression | ❌ |
-| judge-rubric-change | judge | B6 **Benchlock** | judge | ✅ |
+| judge-rubric-change | judge | B6 **Benchlock** | both | ❌ |
 | judge-parameter-change | judge | B0 fixed threshold | stable | ❌ |
-| judge-parameter-change | judge | B1 peeking t-test | stable | ❌ |
+| judge-parameter-change | judge | B1 peeking t-test | regression | ❌ |
 | judge-parameter-change | judge | B2 Bonferroni t-test | stable | ❌ |
-| judge-parameter-change | judge | B3 CUSUM | stable | ❌ |
-| judge-parameter-change | judge | B4 ADWIN | stable | ❌ |
+| judge-parameter-change | judge | B3 CUSUM | regression | ❌ |
+| judge-parameter-change | judge | B4 ADWIN | regression | ❌ |
 | judge-parameter-change | judge | B4 DDM | stable | ❌ |
-| judge-parameter-change | judge | B5 Benchlock, no anchor | stable | ❌ |
-| judge-parameter-change | judge | B6 **Benchlock** | stable | ❌ |
+| judge-parameter-change | judge | B5 Benchlock, no anchor | regression | ❌ |
+| judge-parameter-change | judge | B6 **Benchlock** | indeterminate | ❌ |
 | system-regression | system | B0 fixed threshold | regression | ✅ |
 | system-regression | system | B1 peeking t-test | regression | ✅ |
 | system-regression | system | B2 Bonferroni t-test | regression | ✅ |
 | system-regression | system | B3 CUSUM | regression | ✅ |
-| system-regression | system | B4 ADWIN | stable | ❌ |
-| system-regression | system | B4 DDM | stable | ❌ |
+| system-regression | system | B4 ADWIN | regression | ✅ |
+| system-regression | system | B4 DDM | regression | ✅ |
 | system-regression | system | B5 Benchlock, no anchor | regression | ✅ |
 | system-regression | system | B6 **Benchlock** | system | ✅ |
 | both-moved | both | B0 fixed threshold | stable | ❌ |

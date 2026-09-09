@@ -1,7 +1,7 @@
 {
  "command": "uv run python bench/real/run_real.py --all",
- "elapsed_seconds": 49.6,
- "methodology": "Tier 2 streams are **constructed by resampling pooled real judge scores**, not observed longitudinally. A fixed item pool was scored once under each judge configuration; the time axis is built by splicing those pools at known change points. Two further constructions must be stated plainly. **The judge-change scenarios are real**: they splice scores that a real judge actually produced under two configurations. **The system-regression scenarios are not**: no degraded system was built, and the 'regression' is a fixed 0.10 subtracted from the baseline judge's real scores (`compose._pool_scores`, the `-degraded` suffix). That tests whether the attribution machinery separates a subtracted shift from a real judge change; it does not test whether a real judge notices a real system regression. Simulation supplies the statistical power, real judges supply the premise, and neither is a longitudinal production study. We have not run one.",
+ "elapsed_seconds": 34.9,
+ "methodology": "Tier 2 streams are **constructed by resampling pooled real judge scores**, not observed longitudinally. A fixed item pool was scored once under each judge configuration; the time axis is built by splicing those pools at known change points. Two further constructions must be stated plainly. **The judge-change scenarios are real**: they splice scores that a real judge actually produced under two configurations, on an anchor set that is **disjoint from the system suite** \u2014 150 items each, from different halves of the pool, so the control group really is made of items the system under test never touches. **The system-regression scenarios are not real**: no degraded system was built, and the 'regression' is a fixed 0.10 subtracted from the baseline judge's real scores (`compose._pool_scores`, the `-degraded` suffix). That tests whether the attribution machinery separates a subtracted shift from a real judge change; it does not test whether a real judge notices a real system regression. Simulation supplies the statistical power, real judges supply the premise, and neither is a longitudinal production study. We have not run one.",
  "rows": [
   {
    "accuracy": 0.0,
@@ -51,7 +51,7 @@
    "scenario": "judge-version-bump",
    "single_stream": true,
    "truth": "judge",
-   "verdict": "stable"
+   "verdict": "regression"
   },
   {
    "accuracy": 0.0,
@@ -131,7 +131,7 @@
    "scenario": "judge-rubric-change",
    "single_stream": true,
    "truth": "judge",
-   "verdict": "stable"
+   "verdict": "regression"
   },
   {
    "accuracy": 0.0,
@@ -154,14 +154,14 @@
    "verdict": "regression"
   },
   {
-   "accuracy": 1.0,
-   "correct": true,
+   "accuracy": 0.0,
+   "correct": false,
    "description": "a teammate edited the rubric to be stricter",
    "method": "B6-benchlock",
    "scenario": "judge-rubric-change",
    "single_stream": false,
    "truth": "judge",
-   "verdict": "judge"
+   "verdict": "both"
   },
   {
    "accuracy": 0.0,
@@ -181,7 +181,7 @@
    "scenario": "judge-parameter-change",
    "single_stream": true,
    "truth": "judge",
-   "verdict": "stable"
+   "verdict": "regression"
   },
   {
    "accuracy": 0.0,
@@ -201,7 +201,7 @@
    "scenario": "judge-parameter-change",
    "single_stream": true,
    "truth": "judge",
-   "verdict": "stable"
+   "verdict": "regression"
   },
   {
    "accuracy": 0.0,
@@ -211,7 +211,7 @@
    "scenario": "judge-parameter-change",
    "single_stream": true,
    "truth": "judge",
-   "verdict": "stable"
+   "verdict": "regression"
   },
   {
    "accuracy": 0.0,
@@ -231,7 +231,7 @@
    "scenario": "judge-parameter-change",
    "single_stream": true,
    "truth": "judge",
-   "verdict": "stable"
+   "verdict": "regression"
   },
   {
    "accuracy": 0.0,
@@ -241,7 +241,7 @@
    "scenario": "judge-parameter-change",
    "single_stream": false,
    "truth": "judge",
-   "verdict": "stable"
+   "verdict": "indeterminate"
   },
   {
    "accuracy": 1.0,
@@ -284,24 +284,24 @@
    "verdict": "regression"
   },
   {
-   "accuracy": 0.0,
-   "correct": false,
+   "accuracy": 1.0,
+   "correct": true,
    "description": "degraded system outputs, judged by an unchanged judge",
    "method": "B4-adwin",
    "scenario": "system-regression",
    "single_stream": true,
    "truth": "system",
-   "verdict": "stable"
+   "verdict": "regression"
   },
   {
-   "accuracy": 0.0,
-   "correct": false,
+   "accuracy": 1.0,
+   "correct": true,
    "description": "degraded system outputs, judged by an unchanged judge",
    "method": "B4-ddm",
    "scenario": "system-regression",
    "single_stream": true,
    "truth": "system",
-   "verdict": "stable"
+   "verdict": "regression"
   },
   {
    "accuracy": 1.0,

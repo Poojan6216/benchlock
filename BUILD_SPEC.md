@@ -928,6 +928,7 @@ Phase 5 and Phase 7 are the ones that make anyone care. If the schedule slips, c
 [6.1, 6.2, 6.3, 6.4, 6.5] Tier 2 RAN FOR REAL once an ANTHROPIC_API_KEY arrived: 400 HelpSteer2 items stratified by human helpfulness, four judge configurations on claude-sonnet-5 and claude-haiku-4-5 (baseline, other snapshot, strict rubric, higher effort), 2,456 calls, $3.05, zero API errors, 144 safety refusals. Current models reject 'temperature' and Haiku 4.5 rejects 'effort', so params are per model. Findings: judge self-disagreement at its most deterministic setting 18.90% (36.3% of items varied at least once over five identical calls with a cache-busting nonce); run-to-run wobble 2.06x what independent per-item noise predicts, so the shared_sd term in provisioning is real; the refusal rate moved from 2.3% to 15.0% on a rubric-only edit and tripled on an effort-only change — refusals are drift that a score-watching tool cannot see, now a stated limitation. Benchlock 5/6 scenarios right (missed the effort change, which moved refusals not scores); every baseline 2/6. No OpenAI key, so the cross-provider configuration was not run and RESULTS.md says so. The concurrent scorer had a silent-failure bug (future.result() never called), rewritten to record and refuse on failures.
 [AUDIT] Post-build adversarial audit (6 finder lenses x 3 refuting verifiers) — confirmed gaps, all fixed, all verified by reproduction: (1) min_detectable_shift returned a FINITE magnitude when no shift was provable in the horizon, which every caller read as 'detectable', so a pure judge shift over a short horizon produced a phantom SYSTEM verdict — it now returns inf, min_feasible_horizon() gives the floor (29 runs at alpha 0.05), ProvisioningImpossibleError says 'more anchors cannot help', and the human report says 'no judge shift of any size could have been proven yet'; reproduction now yields indeterminate/race_failed. (2) The e-value reported was the endpoint, not the peak, so a transient crossing read as never crossing — EDetector tracks peak log-e and crossed() is sticky, consistent with alarm_time. (3) _pin_state compared pins across streams — now per stream, every run against that stream's first; judge swap-and-back yields pin_violation. (4) The corrected stream's scale was data-dependent — baseline_sd = sqrt(system_sd^2 + anchor_sd^2), fixed before monitoring. (5) Adversarial 7.7 was an identity no-op — it now builds real zero-variance and zero-variance-then-step streams. (6) 7.9 claimed the nonce's effect on a real judge was measured — relabelled UNMEASURED. (7) --only clobbered adversarial-latest.json — separate file. (8) judge-refusal-rates.json had no committed producer — bench/real/refusal_rates.py derives it from the run log. (9) writeup.md carried real-judge numbers as literals — read from JSON. (10) README did not say which numbers were simulated and which real — labelled, with new limitations: adapter fixtures are doc-derived, the GitHub Action is not exercised in CI. (11) Both judge adapters raised on refusal before reading usage, so refused calls' tokens went uncounted — usage is accounted first, refusals counted; the committed cost.json predates the fix and RESULTS.md discloses it. (12) compose.py's system-regression scenarios subtract a fixed 0.10 from real scores and the item set is intersected across configs — disclosed in METHODOLOGY. (13) Nothing enforced that generated docs matched their generators — scripts/check_generated.py regenerates all six and fails on a diff, wired into CI. (14) provisioning.md's worked example stated the wrong item count — 40. Because decide() changed, EVERY simulation number was regenerated against the final engine (Hard Rule 5): headline 21.2% / 7.4% / 0.0% false alarms, judge cell 100% 'judge'; Tier 2, demos and dogfood re-run and unchanged in verdict.
 [5.3, 5.4, 5.6, 7.10, AUDIT] Grid REGENERATED against the final engine (192 cells, 100 seeds/cell, horizon 60) after the audit fixes changed decide(). Substantively unchanged, which is the point of re-running rather than assuming: B1 detects a real regression in a mean-median 3.2 runs, Benchlock in 25.1 (7.7x; was 3.1 / 24.6 / 8.1x); B1 false-alarms on 23.6% of drift-free cells, Benchlock on 0.0%; judge->system misattribution 0.005 for Benchlock (was 0.006) vs 0.126 for B5 without the anchor and 0.189 for the peeking t-test; 10.1% of cells land in indeterminate rather than being guessed; Benchlock detection rate 82.2%. Every generated document and all five plots re-rendered from the new JSON; check_numbers and check_generated pass. Also: the CI workflow has now run on a real GitHub runner (all ten jobs green) after one fix — confseq's sdist pins pybind11~=2.6, which cannot compile on Python 3.12 / GCC 13, so CI builds the oracle against a current pybind11 and fails loudly if it is not importable rather than letting the differential skip.
+[AUDIT-2] Second adversarial audit before public release (8 finder lenses x 3 refuting verifiers; 63 of 131 agents died on a session limit, so several lenses went UNVERIFIED and were checked by hand instead). Two CRITICAL defects made the shipped tool unusable in its own documented workflow, both invisible to every benchmark because no benchmark drives the CLI: (1) _judge_adapter returned the simulated judge or died, so no hosted judge was reachable at all and the README quickstart failed at its second command — AnthropicJudge/OpenAIJudge were complete and had produced the $3.05 Tier 2 study, but only bench/real/build_pool.py could reach them; (2) anchor runs were numbered by a per-stream counter that already contained the K noise-floor replicates while _corrected_stream joins the legs on run_index, so every CLI ledger compared system run j against the anchor scoring taken K runs earlier. Three more broke the published numbers: Tier 1 seeds came from Python's per-process-salted hash() so NO published number could be regenerated (now SHA-256); the Tier 2 anchor set and system suite were the identical 150 items, making the difference-in-differences vacuous (now disjoint halves, and Benchlock honestly drops 5/6 -> 4/6); and ADWIN was fed run means while every other baseline got item-level scores AND both ADWIN and DDM had their transient drift flag read once per run, discarding 199 of every 200 alarms — ADWIN's published detection rate goes 0.000 -> 0.934. Also fixed: observe ignored system.adapter so the promptfoo/Inspect/DeepEval loaders were unreachable; --rescore-anchors skipped the anchor-pin check that the other path performs; replay re-derived verdicts under its own --target-shift and called the difference a regression (target_shift is now recorded per verdict); --anchor-store was write-only; anchor.cadence was inert; the cache-busting nonce never reached baseline; directories, binaries and truncated anchor stores raised tracebacks; init never wrote the .gitignore the code assumed, so the quickstart staged raw eval content; the composite Action installed from PyPI and had no way to authenticate; the PR comment reported E_corrected as 'not crossed' unconditionally; the saturated flag was computed and dropped so a -0.30 move was reported as -0.150 with an interval excluding it; judge->system misattribution was averaged over cells where it cannot occur (0.00 -> 0.035, worst cell 49%); docs/launch.md and CHANGELOG.md carried numbers from a superseded run and were outside both checkers; and the slow tests that PRODUCE every number in statistical-guarantees.md ran in no CI job. Documented rather than fixed: the verdict-level false-alarm bound is 2*alpha not alpha (a verdict fires when either of two alpha-level processes crosses), and rule 5 has no power guard so a regression arriving with judge drift can read as 'judge', pass the gate, and be absorbed by the recommended rebaseline. 10 regression tests added in tests/test_audit_regressions.py.
 ```
 
 ---
@@ -953,30 +954,30 @@ the judge's own scores answers that exactly.
 **1. False alarms under peeking.** Over 500 drift-free streams, each inspected after every
 one of 142 runs, at alpha=0.05:
 
-- a t-test re-run at every run raises at least one false alarm on **21.2%** of perfectly
+- a t-test re-run at every run raises at least one false alarm on **20.8%** of perfectly
   healthy pipelines
-- Bonferroni-corrected over runs-so-far: **7.4%**, still above its own alpha
+- Bonferroni-corrected over runs-so-far: **7.0%**, still above its own alpha
 - Benchlock: **0.0%**
 
 **2. Misattribution under a silent judge change.** The same pipeline with only the judge
 moved:
 
-- every single-stream method — fixed threshold, t-test, Bonferroni, CUSUM, and Benchlock
-  with its anchor stream removed — reports "regression" **100%** of the time
+- every single-stream method — fixed threshold, t-test, Bonferroni, CUSUM, ADWIN, DDM, and
+  Benchlock with its anchor stream removed — reports "regression" **100%** of the time
 - Benchlock reports `judge` **100%** of the time
 
         uv run python bench/sim/run_sim.py --headline --seeds 500 --horizon 150
 
 ### The anti-result: where Benchlock is worse
 
-**Benchlock detects a real regression roughly 8x slower than the invalid peeking t-test.**
-Mean median detection delay across the grid: **3.2 runs** for the t-test, **25.1 runs** for
+**Benchlock detects a real regression roughly 7x slower than the invalid peeking t-test.**
+Mean median detection delay across the grid: **3.5 runs** for the t-test, **24.6 runs** for
 Benchlock. That is the price of a guarantee that survives daily looking, it is a headline
 row in RESULTS.md rather than a footnote, and the README says plainly that if a false
 rollback is cheap and slow detection is expensive, the t-test is the better tool.
 
 Bonferroni is also *faster* than Benchlock and still holds a lower false-alarm rate than
-the raw t-test — it is a real method, not a strawman, and its 7.4% is the honest reason it
+the raw t-test — it is a real method, not a strawman, and its 7.0% is the honest reason it
 is not sufficient rather than a reason to dismiss it.
 
 ### The attacks that beat it, with measured rates
@@ -1074,9 +1075,15 @@ completed afterwards against real hosted judges.
 Tier 2 ran against `claude-sonnet-5` and `claude-haiku-4-5` over 400 HelpSteer2 items
 stratified by human helpfulness rating: **2,456 calls, $3.05, zero API errors.**
 
-**Benchlock got 5/6 scenarios right; every baseline got 2/6.** The one it missed
-is instructive and is in the table: a judge-effort change moved the *refusal* rate without
-moving the mean score, and a score-watching tool cannot see that.
+**Benchlock got 4/6 scenarios right; every baseline got 2/6.** Both misses are on
+judge-truth scenarios and both are instructive. The effort change moved the judge's
+*refusal* rate without moving its mean score, and a score-watching tool cannot see that.
+The rubric change came back `both` rather than `judge`: the corrected process crossed too,
+which on a disjoint anchor set is what happens when a rubric edit does not move the two
+item sets by the same amount — the parallel-trends assumption the design rests on. That is
+the honest cost of the audit fix that made the anchor set disjoint from the system suite;
+the earlier 5/6 was measured with the two sets sharing all 150 items, where a judge change
+moved two copies of one thing and could not fail to cancel.
 
 **Judge self-disagreement at temperature 0: 18.90%.** Five identical calls per
 item with a cache-busting nonce; 36.3% of items came back different at least
@@ -1124,7 +1131,7 @@ never guessed at.
 4. **A longitudinal study.** Tier 2 streams are resampled from pooled real judge scores, not
    observed over time. Nobody has watched a production pipeline for sixty runs with this
    tool attached, and until someone has, the premise rests on construction.
-5. **Reduce the detection delay.** 8x is the honest price today, but some of it is the
+5. **Reduce the detection delay.** 7x is the honest price today, but some of it is the
    change-point prior charging late candidates ~7.5 nats before they can contribute. A
    better-shaped prior, or a windowed detector, would likely recover a meaningful fraction
    of that without touching the guarantee.

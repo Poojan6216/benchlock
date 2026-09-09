@@ -69,19 +69,19 @@ Everything below is measured — the first two by simulation with known ground t
 last two against real judges — with the commands in this repository:
 
 - The everyday approach, a t-test on every commit, **raises a false alarm on
-  21.2% of perfectly healthy pipelines.** Benchlock: **0.0%**.
+  20.8% of perfectly healthy pipelines.** Benchlock: **0.0%**.
 - When only the judge moved, the everyday approach says "regression"
   **100%** of the time. Benchlock says `judge` **100%** of the time.
 - **A real judge at its most deterministic setting disagrees with itself
   18.9% of the time.** Ask it the identical question twice and
   one time in 5 you get a different score. That is the whole problem, measured.
-- On 6 scenarios built from real judge scores, Benchlock got **5**
+- On 6 scenarios built from real judge scores, Benchlock got **4**
   right. The best competing method got 2.
 
 ### What it costs
 
-**Benchlock is about 8× slower to spot a real regression** than the
-everyday method — 25.1 runs on average against 3.2. That is the price of
+**Benchlock is about 7× slower to spot a real regression** than the
+everyday method — 24.6 runs on average against 3.5. That is the price of
 a guarantee that survives daily looking, and it is a headline row in
 [RESULTS.md](RESULTS.md), not a footnote. If a false rollback is cheap for you and slow
 detection is expensive, the everyday method is genuinely the better tool.
@@ -145,8 +145,8 @@ Over 500 drift-free streams, each inspected after **every one** of
 
 | method | raises at least one false alarm on |
 |---|---:|
-| t-test re-run every run | **21.2%** of healthy pipelines |
-| the same, Bonferroni-corrected | **7.4%** |
+| t-test re-run every run | **20.8%** of healthy pipelines |
+| the same, Bonferroni-corrected | **7.0%** |
 | **Benchlock** | **0.0%** |
 
 Peeking is not a misuse of the t-test here — it *is* the workflow. CI runs on every commit
@@ -187,7 +187,7 @@ the noise floor the whole tool is measured against, and it is not zero.
 A refused item leaves the sample silently, and Benchlock does not watch for that — it is
 listed under limitations below.
 
-On six scenarios composed from those real scores, **Benchlock got 5 right; the best
+On six scenarios composed from those real scores, **Benchlock got 4 right; the best
 single-stream baseline got 2.** The one Benchlock missed is the configuration change
 that moved refusals rather than scores. The streams are constructed by resampling real judge
 scores, not observed longitudinally, and the system-regression scenarios subtract a fixed

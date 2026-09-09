@@ -1,6 +1,6 @@
 {
  "command": "uv run python bench/adversarial/run_adversarial.py --all",
- "elapsed_seconds": 61.4,
+ "elapsed_seconds": 70.8,
  "rows": [
   {
    "description": "a judge change confined to a region the anchor set does not cover",

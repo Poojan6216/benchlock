@@ -34,7 +34,7 @@ First release.
 ### Measured
 
 - False alarms on drift-free streams inspected after every run: **0.0%**, against
-  **21.2%** for a t-test re-run at every run.
+  **20.8%** for a t-test re-run at every run.
 - Attribution under a silent judge change: **100%** correct, where every single-stream
   method reports a regression.
 - Detection delay: **8× slower** than the invalid peeking t-test. That is the price of the
