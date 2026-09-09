@@ -355,6 +355,19 @@ verdict, which together are the difference between a guarantee and a decoration.
 - **A judge configuration change that moves refusals but not scores is invisible.** Raising
   the judge's reasoning effort tripled its refusal rate while barely moving the mean score,
   and Benchlock returned `stable` — one of six real-judge scenarios it gets wrong.
+- **A real regression hiding behind judge drift can pass the gate.** When the anchor
+  process crosses and the anchor-corrected process has not, Benchlock returns `judge` and
+  exits 0. There is no check that the corrected process had the *power* to detect a system
+  component — the `indeterminate` guard exists for the mirror case (`system` when the
+  anchor lacked power) and has no counterpart here. A judge change and a smaller genuine
+  regression arriving together can therefore read as `judge`, and the recommended
+  re-baseline then folds the regression into the new baseline permanently. Provisioning
+  the anchor set properly makes this less likely; nothing currently rules it out.
+- **Benchlock's own misattribution is concentrated, not spread.** Averaged over the grid's
+  judge-truth cells it calls a judge change a system regression rarely, but in one measured
+  regime — coarse scores, a noisy judge, and a change arriving late in the horizon — it does
+  so on a large fraction of streams. The cell and the number are named in
+  [RESULTS.md](RESULTS.md) rather than left inside an average.
 - **Single judge, single suite, single system.** Ensembles and portfolios are v2.
 - **The promptfoo / Inspect AI / DeepEval adapters were tested against fixtures built from
   each project's documented output shape, not captured from real runs.** A schema that has

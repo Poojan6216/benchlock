@@ -73,18 +73,22 @@ constantly wins.
 
 | method | false alarm | ARL₀ | detection rate | judge→system | system→judge | indeterminate |
 |---|---:|---:|---:|---:|---:|---:|
-| B0 fixed threshold | 0.034 | 51.0 | 0.81 | 0.13 | 0.00 | 0.00 |
-| B1 peeking t-test | 0.236 | 42.1 | 0.85 | 0.19 | 0.00 | 0.00 |
-| B2 Bonferroni t-test | 0.086 | 48.2 | 0.87 | 0.17 | 0.00 | 0.00 |
-| B3 CUSUM | 0.003 | 51.9 | 0.84 | 0.13 | 0.00 | 0.00 |
+| B0 fixed threshold | 0.034 | 51.0 | 0.81 | 0.66 | 0.00 | 0.00 |
+| B1 peeking t-test | 0.236 | 42.1 | 0.85 | 0.94 | 0.00 | 0.00 |
+| B2 Bonferroni t-test | 0.086 | 48.2 | 0.87 | 0.86 | 0.00 | 0.00 |
+| B3 CUSUM | 0.003 | 51.9 | 0.84 | 0.65 | 0.00 | 0.00 |
 | B4 ADWIN | 0.000 | 52.0 | 0.00 | 0.00 | 0.00 | 0.00 |
-| B4 DDM | 0.017 | 51.6 | 0.01 | 0.00 | 0.00 | 0.00 |
-| B5 Benchlock, no anchor | 0.000 | 52.0 | 0.81 | 0.13 | 0.00 | 0.00 |
-| B6 **Benchlock** | 0.000 | 52.0 | 0.82 | 0.00 | 0.00 | 0.10 |
+| B4 DDM | 0.017 | 51.6 | 0.01 | 0.01 | 0.00 | 0.00 |
+| B5 Benchlock, no anchor | 0.000 | 52.0 | 0.81 | 0.63 | 0.00 | 0.00 |
+| B6 **Benchlock** | 0.000 | 52.0 | 0.82 | 0.02 | 0.00 | 0.10 |
 
-`judge→system` is how often a method called a judge change a system regression.
-`system→judge` is the reverse. For single-stream methods the first column is 1.00 by
-construction whenever they fire, because "regression" is the only verdict available to them.
+`judge→system` is how often a method called a judge change a system regression, averaged
+over the judge-truth cells — the ones where that error is possible at all. `system→judge`
+is the reverse, over system-truth cells. For single-stream methods the first column is 1.00
+by construction whenever they fire, because "regression" is the only verdict available to
+them.
+
+**Where Benchlock's own misattribution concentrates.** The grid mean above is an average over 36 judge-truth cells and hides the shape of the failures, which are not spread evenly. The worst cell is a judge shift of 0.1 arriving at run 25 on `binary` scores with a noisy judge (per-item SD 0.16): there Benchlock returns `system` on **40%** of streams where only the judge moved — a confident, wrong rollback recommendation. A late change point leaves few post-change runs for the anchor process to accumulate evidence in, and a noisy judge widens the null it has to clear; the anchor leg then fails to cross while the corrected leg does. If your judge is noisy and your scores are coarse, this is the regime to know about.
 
 ### Median detection delay, in runs
 
