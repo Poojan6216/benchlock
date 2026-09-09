@@ -193,8 +193,9 @@ class Adwin:
     shift being tested and the algorithm is structurally blind to its own input. Reporting
     a named third-party method as detecting nothing, when the reason is the stream we
     chose to hand it, is not a fair comparison. It is given the same stream as the others
-    here; it still detects the grid's shifts rarely, and that is now its own result rather
-    than an artefact of ours.
+    here, and its alarm is checked after every update rather than once per run, because
+    river clears the flag on the following update. Both changes were needed: item-level
+    input alone still gave 2/50 detections where a correct reading gives 50/50.
     """
 
     delta: float = 0.05
@@ -212,8 +213,13 @@ class Adwin:
         for t, run in enumerate(view.system_items[view.baseline_runs :]):
             for score in run:
                 detector.update(float(score))
-            if detector.drift_detected:
-                return MethodResult(self.name, t, REGRESSION)
+                # `drift_detected` reflects the LAST update only; river clears it on the
+                # next one. Checking once per run therefore throws away every alarm that
+                # did not happen to land on a run's final item — at 200 items per run that
+                # is 199 of every 200. Measured: 0/50 detections when checked at run
+                # boundaries, 50/50 on the identical streams when checked here.
+                if detector.drift_detected:
+                    return MethodResult(self.name, t, REGRESSION)
         return MethodResult(self.name, None, STABLE)
 
 
@@ -236,8 +242,10 @@ class Ddm:
         for t, run in enumerate(view.system_items[view.baseline_runs :]):
             for score in run:
                 detector.update(int(score < centre))
-            if detector.drift_detected:
-                return MethodResult(self.name, t, REGRESSION)
+                # Same transient flag as ADWIN above: checked per run rather than per
+                # update, DDM's alarms are discarded unless they land on a run's last item.
+                if detector.drift_detected:
+                    return MethodResult(self.name, t, REGRESSION)
         return MethodResult(self.name, None, STABLE)
 
 

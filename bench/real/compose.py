@@ -130,8 +130,22 @@ def compose(
     # a score for a missing item, which is precisely the kind of invented number this
     # project exists to make impossible.
     all_items = sorted(set.intersection(*(set(v) for v in pool["scores"].values())))
+    # DISJOINT. Both slices used to start at zero, so with the default sizes the anchor
+    # set and the system suite were the identical 150 items — the control group was the
+    # treatment group. That makes the difference-in-differences vacuous: a judge change
+    # moves two copies of one thing, and only the fixed offset subtracted by the
+    # `-degraded` scenarios distinguishes the legs at all. The anchor set is defined as
+    # items the system under test never touches, so build it that way here too.
+    needed = anchor_items + items_per_run
+    if len(all_items) < needed:
+        raise SystemExit(
+            f"pool has {len(all_items)} items scored by every configuration, but a disjoint "
+            f"anchor set ({anchor_items}) and system suite ({items_per_run}) need {needed}. "
+            f"Re-run bench/real/build_pool.py with more items, or lower the sizes."
+        )
     anchor_ids = all_items[:anchor_items]
-    system_ids = all_items[:items_per_run]
+    system_ids = all_items[anchor_items : anchor_items + items_per_run]
+    assert not set(anchor_ids) & set(system_ids)
 
     replicate_scorings = [dict(s) for s in pool["replicate_scores"]]
     run_means = [float(np.mean([s[i] for i in anchor_ids if i in s])) for s in replicate_scorings]
@@ -250,7 +264,10 @@ METHODOLOGY = (
     "configuration; the time axis is built by splicing those pools at known change "
     "points. Two further constructions must be stated plainly. **The judge-change "
     "scenarios are real**: they splice scores that a real judge actually produced under "
-    "two configurations. **The system-regression scenarios are not**: no degraded system "
+    "two configurations, on an anchor set that is **disjoint from the system suite** — 150 "
+    "items each, from different halves of the pool, so the control group really is made of "
+    "items the system under test never touches. **The system-regression scenarios are "
+    "not real**: no degraded system "
     "was built, and the 'regression' is a fixed 0.10 subtracted from the baseline judge's "
     "real scores (`compose._pool_scores`, the `-degraded` suffix). That tests whether the "
     "attribution machinery separates a subtracted shift from a real judge change; it does "

@@ -171,6 +171,35 @@ def _relativise(path: Path, root: Path) -> Path:
     return Path("./") / rel if rel.parts else Path("./")
 
 
+def _ignore_benchlock_dir(root: Path) -> None:
+    """Keep `.benchlock/` out of version control, rather than only saying so.
+
+    The anchor store under `.benchlock/` holds raw prompts and model outputs — the eval
+    content itself — and `baseline` tells the user to keep it out of git. Nothing wrote the
+    rule, so following the tool's own quickstart in a fresh repository stages that content
+    on the next `git add .`. An existing .gitignore is appended to, never rewritten.
+    """
+    entry = ".benchlock/"
+    path = root / ".gitignore"
+    try:
+        existing = path.read_text(encoding="utf-8") if path.exists() else ""
+        if any(line.strip().rstrip("/") == ".benchlock" for line in existing.splitlines()):
+            return
+        prefix = "" if not existing or existing.endswith("\n") else "\n"
+        path.write_text(
+            f"{existing}{prefix}\n# Benchlock's ledger and frozen anchor set. The anchor store\n"
+            f"# holds raw eval content; keep it out of version control.\n{entry}\n",
+            encoding="utf-8",
+        )
+    except OSError as exc:  # pragma: no cover - a read-only tree is the user's business
+        typer.secho(
+            f"  ! could not update .gitignore ({exc}); add `{entry}` yourself",
+            fg=typer.colors.YELLOW,
+        )
+        return
+    typer.echo(f"  - added `{entry}` to .gitignore (the anchor store holds raw eval content)")
+
+
 def _render_config(found: Detection) -> str:
     """Render a commented benchlock.yaml. Comments matter: this is the file a user reads
     to understand what the tool is asking of them."""
@@ -580,6 +609,8 @@ def init(
     except ConfigError as exc:  # pragma: no cover - guards a template regression
         _die("generated config failed its own validation", exc.render())
     target.write_text(text, encoding="utf-8")
+
+    _ignore_benchlock_dir(root)
 
     typer.echo(f"wrote {target.relative_to(Path.cwd()) if root == Path.cwd() else target}")
     for line in found.evidence:

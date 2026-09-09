@@ -97,6 +97,20 @@ jobs:
       - run: uv sync
       - run: uv run python scripts/check_numbers.py
 
+  # The slow tests are the PRODUCERS of every number in docs/statistical-guarantees.md —
+  # the confseq differential, the composite-null false-alarm rate, the noise floor and the
+  # provisioning calibration. They ran in no job at all: `test` runs `-m "not slow"` and
+  # the named jobs run `-m mandatory`. A published guarantee that CI never re-checks is a
+  # claim about a run that happened once on someone's laptop.
+  slow-tests-the-guarantees-rest-on:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - run: uv run pytest -m slow -v
+
   # Hand edits to generated docs, or generator changes never re-run, fail here.
   generated-docs-match-generators:
     runs-on: ubuntu-latest

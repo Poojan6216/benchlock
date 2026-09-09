@@ -6,7 +6,7 @@ terminal cannot disagree about what happened.
 
 from __future__ import annotations
 
-from benchlock.model.verdict import Attribution, Provisioning, Verdict
+from benchlock.model.verdict import Attribution, Evidence, Provisioning, Verdict
 
 _EMOJI = {
     Verdict.STABLE: "✅",
@@ -30,6 +30,11 @@ def _row(name: str, value: float, threshold: float, crossed_at: int | None) -> s
     return f"| `{name}` | {value:,.1f} | {threshold:,.1f} | {state} |"
 
 
+def _corrected_row(e: Evidence) -> str:
+    state = "crossed" if e.corrected_crossed else "not crossed"
+    return f"| `E_corrected` | {e.e_corrected:,.1f} | {e.threshold:,.1f} | {state} |"
+
+
 def _interval(lower: float, upper: float) -> str:
     return f"`[{lower:+.3f}, {upper:+.3f}]`"
 
@@ -49,7 +54,11 @@ def render_markdown(attribution: Attribution, *, title: str = "Benchlock verdict
         "|---|---:|---:|---|",
         _row("E_anchor", e.e_anchor, e.threshold, e.crossed_at_anchor),
         _row("E_system", e.e_system, e.threshold, e.crossed_at_system),
-        _row("E_corrected", e.e_corrected, e.threshold, None),
+        # `crossed_at` is not recorded for the corrected process, but "not crossed" is a
+        # claim, not a placeholder: printing it beside an e-value of 476 against a
+        # threshold of 40 contradicts both the number on the same row and the terminal
+        # block. Say whether it crossed, and stay silent about when.
+        _corrected_row(e),
         "",
         "| shift | confidence sequence |",
         "|---|---|",

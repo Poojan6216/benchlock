@@ -12,6 +12,7 @@ winning a benchmark without being useful, so both appear in every table or neith
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import time
 from collections.abc import Iterator, Sequence
@@ -96,6 +97,20 @@ class Tally:
                 self.delays.append(result.alarm_time - change_at_monitored)
 
 
+def stream_seed(*parts: object) -> int:
+    """A seed that is the same on every machine, every process, forever.
+
+    Python's builtin `hash()` is randomised per process for `str` (PEP 456), so
+    `hash((cell.key(), seed))` drew a DIFFERENT stream on every invocation. Every Tier 1
+    number was therefore unreproducible: the command printed under each published table
+    could not regenerate the table, and two runs of the same code disagreed by Monte-Carlo
+    noise that looked like a real change. Hard Rule 7 asks for determinism; this is what
+    delivers it.
+    """
+    digest = hashlib.sha256("\x1f".join(str(p) for p in parts).encode()).digest()
+    return int.from_bytes(digest[:4], "big") % (2**31)
+
+
 def build_view(spec: StreamSpec, config: AttributionConfig) -> StreamView:
     system, anchor = generate(spec)
     return StreamView(
@@ -157,7 +172,7 @@ def run(*, seeds: int, quick: bool, horizon: int, config: AttributionConfig) -> 
         for seed in range(seeds):
             spec = StreamSpec(
                 name=cell.key(),
-                seed=hash((cell.key(), seed)) % (2**31),
+                seed=stream_seed(cell.key(), seed),
                 n_runs=horizon,
                 change_at=cell.change_at,
                 per_item_sd=cell.per_item_sd,
@@ -250,7 +265,7 @@ def run_headline(*, seeds: int, horizon: int, config: AttributionConfig) -> dict
         for seed in range(seeds):
             spec = StreamSpec(
                 name=cell.key(),
-                seed=hash((cell.key(), seed, "headline")) % (2**31),
+                seed=stream_seed(cell.key(), seed, "headline"),
                 n_runs=horizon,
                 change_at=cell.change_at,
                 per_item_sd=cell.per_item_sd,
